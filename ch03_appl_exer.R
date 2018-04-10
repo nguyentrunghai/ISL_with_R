@@ -171,7 +171,7 @@ abline(lm.x.on.y.without.intercept)
 
 
 # (d)
-# See Figure_ch03_appl_exce_11d.pdf
+# See Figure_ch03_appl_exer_11d.pdf
 
 # (e)
 # The t-statistic for beta when for simple linear regression without intercept is symmetric with respect to
