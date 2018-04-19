@@ -161,3 +161,240 @@ odds(0.16)  # 0.1904762
 
 # Applied
 
+# 10
+library(ISLR)
+
+# 10a
+names(Weekly)
+?Weekly      # Direction is qualitative variable with two levels "Up" and "Down"
+summary(Weekly)  # there are 605 weeks when the stock went up and 484 when it went down
+cor(Weekly[,-9])
+plot(Weekly)  # The only noticeable association is between Year and Volume.
+              # The latter the Year was the more stocks were traded.
+
+
+par(mfrow=c(2,4))
+for (n in names(Weekly)){
+  if (n != "Direction"){
+    plot(Weekly[, "Direction"], Weekly[, n], xlab="Direction", ylab=n)
+  }
+}
+# There is no noticeable association between Direction the remaining variables either,
+# except between Direction and Today, which are the same thing: when Today is negative 
+# Direction is Down and vice versa.
+
+# 10b
+logistic_fit = glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
+summary(logistic_fit)
+summary(logistic_fit)$coef
+# The p-value of Lag2 (3%) is less than 5%, so we can say that it is statistically significant.
+# Other predictors have p-values at least 11% and are not statistically significant.
+
+# 10c
+contrasts(Weekly$Direction)   # Up is coded as 1. So the probability is for Up
+# type = "response" means output probabilities of the form P(Y=1|X).
+logistic_probs = predict(logistic_fit, type="response")
+logistic_pred = rep("Down", length(logistic_probs))
+logistic_pred[logistic_probs > 0.5] = "Up"
+Direction_true = Weekly$Direction
+
+# the confusion matrix
+confusion = table(Direction_true, logistic_pred)
+
+# overall fraction of correct prediction
+sum(diag(confusion)) / sum(confusion)    
+# 56.1 %. Not so great.
+# There are 55.5% of the weeks that saw stock went up.
+# A stupid classifier that assigns every week to "Up" can achieve a similar correct prediction rate.
+
+# Rows the confusion matrix correspond to the true Direction.
+# The columns correspond to Direction predicted by logistic regression model.
+# The diagonal elements are number of weeks whose Direction are predicted correctly.
+# The off-diagonal elements are number of weeks whose Direction are predicted incorrectly.
+
+# True positive rate
+confusion["Up", "Up"] / (confusion["Up", "Down"] + confusion["Up", "Up"])
+# 92 % is a high True pos. rate. 
+# Among the weeks that saw the stock went up, 92% are predicted correctly by the logistic regression model.
+
+# False positive rate
+confusion["Down", "Up"] / (confusion["Down", "Up"] + confusion["Down", "Down"])
+# 89% also a high False positive rate.
+# Among the weeks that saw the stock went down, 89% are predicted wrongly by the logistic regression model.
+# So this classifier put too many weeks into the "Up" bucket.
+
+# Precision
+confusion["Up", "Up"] / (confusion["Down", "Up"] + confusion["Up", "Up"])
+# 56.4 %
+# Among the weeks that are predicted to go up, 56% of them actually went up.
+
+# 10d
+train = (Weekly$Year < 2009)
+test = !train
+Weekly_after2008 = Weekly[test,]
+Direction_true_after2008 = Direction_true[test]
+
+logistic_fit = glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+summary(logistic_fit)
+# p-value of Lag2 is 4%, still statistically significant.
+
+logistic_probs = predict(logistic_fit, Weekly_after2008, type="response")
+logistic_pred = rep("Down", length(logistic_probs))
+logistic_pred[logistic_probs > 0.5] = "Up"
+
+confusion = table(Direction_true_after2008, logistic_pred)
+# overall fraction of correct prediction
+sum(diag(confusion)) / sum(confusion) 
+# 62.5 %, so the test error rate is 37.5 %
+
+# 10e
+library(MASS)
+lda_fit = lda(Direction ~ Lag2, data=Weekly, subset=train)
+lda_pred = predict(lda_fit, Weekly_after2008)$class
+confusion = table(Direction_true_after2008, lda_pred)
+confusion
+# overall fraction of correct prediction
+sum(diag(confusion)) / sum(confusion) 
+# 0.625 %, the error rate is 37.5 %
+# Same as logistic regression
+
+# 10f
+qda_fit = qda(Direction ~ Lag2, data=Weekly, subset=train)
+qda_pred = predict(qda_fit, Weekly_after2008)$class
+confusion = table(Direction_true_after2008, qda_pred)
+confusion
+# all weeks are predicted to go up!
+
+# overall fraction of correct prediction
+sum(diag(confusion)) / sum(confusion)
+# 58.6 % the same as the fracetion of "Up" in the test set:
+mean(Direction_true_after2008 == "Up")
+# test error rate is 41.4 %
+
+# 10g
+library(class)
+train.X = cbind( Weekly[train,]$Lag2 )
+train.Y = Weekly[train,]$Direction
+
+test.X = cbind( Weekly[test,]$Lag2 )
+
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=1)
+confusion = table(Direction_true_after2008, knn_pred)
+
+# overall fraction of correct prediction
+sum(diag(confusion)) / sum(confusion)
+# 50. %, the error rate is 50. %, like random guessing!
+
+# 10h
+# test error rates
+# logistic regression: 37.5 %
+# LDA:                 37.5 %
+# QDA:                 41.4 %
+# KNN with k=1:        50.0 %
+# So logistic regression and lda apprea to perform the best
+
+# 10i
+do_classify = function(method, data, predictors, 
+                       response, train, test,
+                       k=1){
+  data$Y = data[, response]
+  variable_names = c(predictors, "Y")
+  
+  if (method == "logistic"){
+    model_fit = glm(Y ~ ., data=data[, variable_names], family=binomial, subset=train)
+    
+    probs = predict(model_fit, data[test, variable_names], type="response")
+    pred = rep("Down", length(probs))
+    pred[probs > 0.5] = "Up"
+  }
+  
+  if (method == "lda"){
+    model_fit = lda(Y ~ ., data=data[, variable_names], subset=train)
+    pred = predict(model_fit, data[test, variable_names])$class
+  }
+  
+  if (method == "qda"){
+    model_fit = qda(Y ~ ., data=data[, variable_names], subset=train)
+    pred = predict(model_fit, data[test, variable_names])$class
+  }
+  
+  if (method == "knn"){
+    train.X = cbind( data[train, predictors] )
+    train.Y = data[train,]$Y
+    test.X = cbind( data[test, predictors] )
+    
+    set.seed(1)
+    pred = knn(train.X, test.X, train.Y, k=k)
+  }
+  
+  confus = table(data$Y[test], pred)
+  error_rate = 1 - sum(diag(confus)) / sum(confus)
+  return(error_rate)
+}
+
+# some predictor combinations
+preditor_combinations = list( Lag2      = c("Lag2"), 
+                              Lag1_2    = c("Lag1", "Lag2"),
+                              Lag2_3    = c("Lag2", "Lag3"), 
+                              Lag2_4    = c("Lag2", "Lag4"),
+                              Lag2_5    = c("Lag2", "Lag5"),
+                              Lag2_V    = c("Lag2", "Volume"),
+                              Lag1_2_3  = c("Lag1", "Lag2", "Lag3"),
+                              Lag1_2_4  = c("Lag1", "Lag2", "Lag4"), 
+                              Lag1_2_V  = c("Lag1", "Lag2", "Volume") )
+
+# logistic regression
+err_logis = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("logistic", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+  err_logis = c(err_logis, c(err))
+}
+names(err_logis) = names(preditor_combinations)
+
+# lda
+err_lda = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("lda", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+  err_lda = c(err_lda, c(err))
+}
+names(err_lda) = names(preditor_combinations)
+
+# qda
+err_qda = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("qda", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+  err_qda = c(err_qda, c(err))
+}
+names(err_qda) = names(preditor_combinations)
+
+# knn_1
+err_knn1 = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=1)
+  err_knn1 = c(err_knn1, c(err))
+}
+names(err_knn1) = names(preditor_combinations)
+
+# knn_2
+err_knn2 = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=2)
+  err_knn2 = c(err_knn2, c(err))
+}
+names(err_knn2) = names(preditor_combinations)
+
+# knn_3
+err_knn3 = c()
+for (pred_comb in names(preditor_combinations)){
+  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=3)
+  err_knn3 = c(err_knn3, c(err))
+}
+names(err_knn3) = names(preditor_combinations)
+
+error_rates = data.frame(logistic=err_logis, lda=err_lda, qda=err_qda, knn1=err_knn1, knn2=err_knn2, knn3=err_knn3)
+error_rates
+# It looks like the overall error rate of 37.5 % obtained by logistic regression and lda 
+# when using only Lag2 is the smallest error rate we can achieve.
+
+
