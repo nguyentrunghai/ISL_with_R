@@ -186,7 +186,6 @@ for (n in names(Weekly)){
 # 10b
 logistic_fit = glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
 summary(logistic_fit)
-summary(logistic_fit)$coef
 # The p-value of Lag2 (3%) is less than 5%, so we can say that it is statistically significant.
 # Other predictors have p-values at least 11% and are not statistically significant.
 
@@ -273,10 +272,10 @@ mean(Direction_true_after2008 == "Up")
 
 # 10g
 library(class)
-train.X = cbind( Weekly[train,]$Lag2 )
+train.X = scale( Weekly[train,]$Lag2 )
 train.Y = Weekly[train,]$Direction
 
-test.X = cbind( Weekly[test,]$Lag2 )
+test.X = scale( Weekly[test,]$Lag2 )
 
 set.seed(1)
 knn_pred = knn(train.X, test.X, train.Y, k=1)
@@ -284,15 +283,15 @@ confusion = table(Direction_true_after2008, knn_pred)
 
 # overall fraction of correct prediction
 sum(diag(confusion)) / sum(confusion)
-# 50. %, the error rate is 50. %, like random guessing!
+# 49. %, the error rate is 51. %, like random guessing!
 
 # 10h
 # test error rates
 # logistic regression: 37.5 %
 # LDA:                 37.5 %
 # QDA:                 41.4 %
-# KNN with k=1:        50.0 %
-# So logistic regression and lda apprea to perform the best
+# KNN with k=1:        51.0 %
+# So logistic regression and lda appear to perform the best
 
 # 10i
 do_classify = function(method, data, predictors, 
@@ -320,11 +319,9 @@ do_classify = function(method, data, predictors,
   }
   
   if (method == "knn"){
-    train.X = cbind( data[train, predictors] )
+    train.X = scale( data[train, predictors] )
     train.Y = data[train,]$Y
-    test.X = cbind( data[test, predictors] )
-    
-    set.seed(1)
+    test.X = scale( data[test, predictors] )
     pred = knn(train.X, test.X, train.Y, k=k)
   }
   
@@ -334,7 +331,7 @@ do_classify = function(method, data, predictors,
 }
 
 # some predictor combinations
-preditor_combinations = list( Lag2      = c("Lag2"), 
+predictor_combinations = list( Lag2      = c("Lag2"), 
                               Lag1_2    = c("Lag1", "Lag2"),
                               Lag2_3    = c("Lag2", "Lag3"), 
                               Lag2_4    = c("Lag2", "Lag4"),
@@ -346,55 +343,492 @@ preditor_combinations = list( Lag2      = c("Lag2"),
 
 # logistic regression
 err_logis = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("logistic", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("logistic", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test)
   err_logis = c(err_logis, c(err))
 }
-names(err_logis) = names(preditor_combinations)
+names(err_logis) = names(predictor_combinations)
 
 # lda
 err_lda = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("lda", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("lda", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test)
   err_lda = c(err_lda, c(err))
 }
-names(err_lda) = names(preditor_combinations)
+names(err_lda) = names(predictor_combinations)
 
 # qda
 err_qda = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("qda", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("qda", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test)
   err_qda = c(err_qda, c(err))
 }
-names(err_qda) = names(preditor_combinations)
+names(err_qda) = names(predictor_combinations)
 
 # knn_1
+set.seed(1)
 err_knn1 = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=1)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("knn", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test, k=1)
   err_knn1 = c(err_knn1, c(err))
 }
-names(err_knn1) = names(preditor_combinations)
+names(err_knn1) = names(predictor_combinations)
 
 # knn_2
+set.seed(1)
 err_knn2 = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=2)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("knn", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test, k=2)
   err_knn2 = c(err_knn2, c(err))
 }
-names(err_knn2) = names(preditor_combinations)
+names(err_knn2) = names(predictor_combinations)
 
 # knn_3
+set.seed(1)
 err_knn3 = c()
-for (pred_comb in names(preditor_combinations)){
-  err = do_classify("knn", Weekly, preditor_combinations[[pred_comb]], "Direction", train, test, k=3)
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("knn", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test, k=3)
   err_knn3 = c(err_knn3, c(err))
 }
-names(err_knn3) = names(preditor_combinations)
+names(err_knn3) = names(predictor_combinations)
 
-error_rates = data.frame(logistic=err_logis, lda=err_lda, qda=err_qda, knn1=err_knn1, knn2=err_knn2, knn3=err_knn3)
+# knn_4
+set.seed(1)
+err_knn4 = c()
+for (pred_comb in names(predictor_combinations)){
+  err = do_classify("knn", Weekly, predictor_combinations[[pred_comb]], "Direction", train, test, k=4)
+  err_knn4 = c(err_knn4, c(err))
+}
+names(err_knn4) = names(predictor_combinations)
+
+
+error_rates = data.frame(logistic=err_logis, lda=err_lda, qda=err_qda, knn1=err_knn1, knn2=err_knn2, knn3=err_knn3, knn4=err_knn4)
 error_rates
+colMeans(error_rates)
+rowMeans(error_rates)
 # It looks like the overall error rate of 37.5 % obtained by logistic regression and lda 
 # when using only Lag2 is the smallest error rate we can achieve.
+
+
+# 11
+library(ISLR)
+
+# 11a
+
+mpg01 = rep(0, nrow(Auto))
+mpg_median = median(Auto$mpg)
+mpg01[Auto$mpg > mpg_median] = 1
+mpg01 = factor(mpg01)
+Auto01 = data.frame(Auto[,-1], mpg01)
+Auto01$origin = factor(Auto01$origin)
+
+# 11b
+# scatter plots
+plot(Auto01)
+
+# box plot of predictors vs mpg01
+par(mfrow=c(2,4))
+for (n in names(Auto01)){
+  if (n != "mpg01"){
+    plot(Auto01[, "mpg01"], Auto01[, n], xlab="mpg01", ylab=n)
+  }
+}
+
+# The following features seem to be usefull in predicting mpg01:
+# cylinders, displacement, horsepower, weight. The larger value of these
+# predictors are associated with mpg01 being below median.
+# acceleration and year are also associated with mpg01: but no as strongly.
+
+
+# 11c
+set.seed(1)
+ntrains = floor( nrow(Auto01) * (2/3) )
+ntests = nrow(Auto01) - ntrains
+train = c(rep(TRUE, ntrains), rep(FALSE, ntests))
+# to shuffle 
+train = sample(train, replace=FALSE)
+test = !train
+mpg01_test = Auto01[test, "mpg01"]
+sum(mpg01_test == 1) / length(mpg01_test)
+# about 50% are high mpg
+
+# 11d
+library(MASS)
+lda_fit = lda(mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, data=Auto01, subset=train)
+lda_pred = predict(lda_fit, Auto01[test, ])$class
+confusion = table(mpg01_test, lda_pred)
+confusion
+1 - sum(diag(confusion)) / sum(confusion) 
+# test error rate is 12.2 %
+
+
+# 11e
+qda_fit = qda(mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, data=Auto01, subset=train)
+qda_pred = predict(qda_fit, Auto01[test, ])$class
+confusion = table(mpg01_test, qda_pred)
+confusion
+# error rate
+1 - sum(diag(confusion)) / sum(confusion) 
+# test error rate is 11.4 % a liite better than lda
+
+
+# 11f
+logistic_fit = glm(mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, 
+                   data=Auto01, family = binomial, subset = train)
+summary(logistic_fit)
+# those predictors are statistically significant:
+# weight, acceleration, year
+
+logistic_probs = predict(logistic_fit, Auto01[test, ], type="response")
+logistic_pred = rep(0, length(logistic_probs)) 
+logistic_pred[logistic_probs > 0.5] = 1
+logistic_pred = factor(logistic_pred)
+confusion = table(mpg01_test, logistic_pred)
+confusion
+# error rate
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 16.8 %, a liitle worse than both lda and qda
+
+
+# use only weight, acceleration, and year
+logistic_fit = glm(mpg01 ~ weight + acceleration + year, 
+                   data=Auto01, family = binomial, subset = train)
+summary(logistic_fit)
+
+logistic_probs = predict(logistic_fit, Auto01[test, ], type="response")
+logistic_pred = rep(0, length(logistic_probs)) 
+logistic_pred[logistic_probs > 0.5] = 1
+logistic_pred = factor(logistic_pred)
+confusion = table(mpg01_test, logistic_pred)
+confusion
+# error rate
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate 14.5 %, better than using all predictors
+
+
+# let's try again lda, qda using weight, acceleration, and year
+lda_fit = lda(mpg01 ~  weight + acceleration + year, data=Auto01, subset=train)
+lda_pred = predict(lda_fit, Auto01[test, ])$class
+confusion = table(mpg01_test, lda_pred)
+confusion
+1 - sum(diag(confusion)) / sum(confusion) 
+# test error rate is 14.5 % 
+
+qda_fit = qda(mpg01 ~ weight + acceleration + year, data=Auto01, subset=train)
+qda_pred = predict(qda_fit, Auto01[test, ])$class
+confusion = table(mpg01_test, qda_pred)
+confusion
+# error rate
+1 - sum(diag(confusion)) / sum(confusion) 
+# test error rate is 12.2 % 
+
+
+# 11g
+library(class)
+train.X = scale(Auto01[train, c("cylinders", "displacement", "horsepower", "weight", "acceleration", "year")])
+train.Y = Auto01[train, ]$mpg01
+test.X = scale(Auto01[test, c("cylinders", "displacement", "horsepower", "weight", "acceleration", "year")])
+test.Y = Auto01[test, ]$mpg01
+
+# k=1
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=1)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 12.9 %
+
+# k=2
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=2)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+# k=3
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=3)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+# k=4
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=4)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+# k=5
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=5)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+# k=6
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=6)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 12.2 %
+
+# k=7
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=7)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 12.9 %
+
+# k=8
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=8)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 12.2 %
+
+# k=9
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=9)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 12.2 %
+
+# k=10
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=10)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+# k=20
+set.seed(1)
+knn_pred = knn(train.X, test.X, train.Y, k=20)
+confusion = table(mpg01_test, knn_pred)
+1 - sum(diag(confusion)) / sum(confusion)
+# test error rate is 11.4 %
+
+
+# 12a
+Power = function(){print(2^3)}
+Power
+
+# 12b
+Power2 = function(x, a){print(x^a)}
+Power2(3, 8)
+
+# 12c
+Power2(10, 3)
+Power2(8, 17)
+Power2(131, 3)
+
+# 12d
+Power3 = function(x, a){return(x^a)}
+
+# 12e
+xs = seq.int(1, 10)
+ys = Power3(xs, 2)
+# type="b" means use points and line
+plot(xs, ys, type="b", xlab="x", ylab="y = x^2", main="graph of y = x^2")
+# log scale
+plot(xs, ys, type="b", xlab="x", ylab="y = x^2", main="graph of y = x^2", log="x")
+plot(xs, ys, type="b", xlab="x", ylab="y = x^2", main="graph of y = x^2", log="y")
+plot(xs, ys, type="b", xlab="x", ylab="y = x^2", main="graph of y = x^2", log="xy")
+
+# 12f
+PlotPower = function(xs, a){
+  ys = Power3(xs, a)
+  ylabel = sprintf("y = x^%d", a)
+  title = sprintf("graph of y = x^%d", a)
+  plot(xs, ys, type="b", xlab="x", ylab=ylabel, main=title)
+}
+
+
+
+# 13
+library(MASS)
+library(class)
+
+# modify a little bit the function I defined in 10i
+
+do_classify = function(method, data, predictors, 
+                       response, train, test,
+                       k=NULL){
+  data$Y = data[, response]
+  variable_names = c(predictors, "Y")
+  
+  if (method == "logistic"){
+    model_fit = glm(Y ~ ., data=data[, variable_names], family=binomial, subset=train)
+    
+    probs = predict(model_fit, data[test, variable_names], type="response")
+    pred = rep("Down", length(probs))
+    pred[probs > 0.5] = "Up"
+  }
+  
+  if (method == "lda"){
+    model_fit = lda(Y ~ ., data=data[, variable_names], subset=train)
+    pred = predict(model_fit, data[test, variable_names])$class
+  }
+  
+  if (method == "qda"){
+    model_fit = qda(Y ~ ., data=data[, variable_names], subset=train)
+    pred = predict(model_fit, data[test, variable_names])$class
+  }
+  
+  if (method == "knn"){
+    only_numeric = c()
+    for (name in predictors){
+      if  ( class(data[, name]) == "numeric" ){
+        only_numeric = c(only_numeric, name)
+    }
+    
+    train.X = scale( data[train, only_numeric] )
+    train.Y = data[train,]$Y
+    test.X = scale( data[test, only_numeric] )
+    pred = knn(train.X, test.X, train.Y, k=k)
+    }
+  }
+  
+  confus = table(data$Y[test], pred)
+  error_rate = 1 - sum(diag(confus)) / sum(confus)
+  
+  list_to_return = list(error_rate=error_rate, confusion_matrix=confus)
+  if (method != "knn"){
+    list_to_return$model_fit = model_fit
+  }
+    
+  return(list_to_return)
+}
+
+cor(Boston)
+# All except chas (which is factor) are more or less associated with crim
+Boston$chas = factor(Boston$chas)
+pairs(Boston)
+
+# box plot of predictors vs crim
+par(mfrow=c(3,5))
+for (n in names(Boston)){
+  if (n != "crim"){
+    plot(Boston[, n], Boston[, "crim"], xlab=n, ylab="crim")
+  }
+}
+
+
+crim_median = median(Boston$crim)
+crim01 = rep(0, nrow(Boston))
+crim01[Boston$crim > crim_median] = 1
+crim01 = factor(crim01)
+Boston01 = data.frame(Boston[, -1], crim01)
+
+
+# prepare train and test data
+ntrains = floor(nrow(Boston01) * (1/2))
+ntests = nrow(Boston01) - ntrains
+
+set.seed(1)
+train = c(rep(TRUE, ntrains), rep(FALSE, ntests))
+# to shuffle 
+train = sample(train, replace=FALSE)
+test = !train
+crim01_test = Boston01[test, "crim01"]
+sum(crim01_test == 1) / length(crim01_test)
+# about 52% are above median
+
+
+all_variables = names(Boston01)
+response = "crim01"
+all_predictors = all_variables[ ! all_variables %in% c(response)]
+
+# logistic regression for all predictors
+logistic_result = do_classify("logistic", Boston01, all_predictors, 
+                       response, train, test)
+
+logistic_result$error_rate    # 6.8 %
+summary(logistic_result$model_fit)
+
+# let's choose predictor combinations according to number of stars
+
+predictor_combinations = list(
+  two_predictors = c("nox", "rad"),
+  three_predictors = c("nox", "rad", "ptratio"),
+  seven_predictors = c("nox", "rad", "ptratio", "zn", "dis", "tax", "medv"),
+  eight_predictors = c("nox", "rad", "ptratio", "zn", "dis", "tax", "medv", "black"),
+  all_predictors = all_predictors
+)
+
+# logistic regression
+err_logis = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("logistic", Boston01, predictor_combinations[[pred_comb]], response, train, test)
+  err_logis = c(err_logis, c(results$error_rate))
+}
+names(err_logis) = names(predictor_combinations)
+
+
+# lda
+err_lda = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("lda", Boston01, predictor_combinations[[pred_comb]], response, train, test)
+  err_lda = c(err_lda, c(results$error_rate))
+}
+names(err_lda) = names(predictor_combinations)
+
+# qda
+err_qda = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("qda", Boston01, predictor_combinations[[pred_comb]], response, train, test)
+  err_qda = c(err_qda, c(results$error_rate))
+}
+names(err_qda) = names(predictor_combinations)
+
+
+# knn 1
+set.seed(1)
+err_knn1 = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("knn", Boston01, predictor_combinations[[pred_comb]], response, train, test, k=1)
+  err_knn1 = c(err_knn1, c(results$error_rate))
+}
+names(err_knn1) = names(predictor_combinations)
+
+# knn 2
+set.seed(1)
+err_knn2 = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("knn", Boston01, predictor_combinations[[pred_comb]], response, train, test, k=2)
+  err_knn2 = c(err_knn2, c(results$error_rate))
+}
+names(err_knn2) = names(predictor_combinations)
+
+# knn 4
+set.seed(1)
+err_knn4 = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("knn", Boston01, predictor_combinations[[pred_comb]], response, train, test, k=4)
+  err_knn4 = c(err_knn4, c(results$error_rate))
+}
+names(err_knn4) = names(predictor_combinations)
+
+# knn 6
+set.seed(1)
+err_knn6 = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("knn", Boston01, predictor_combinations[[pred_comb]], response, train, test, k=6)
+  err_knn6 = c(err_knn6, c(results$error_rate))
+}
+names(err_knn6) = names(predictor_combinations)
+
+# knn 10
+set.seed(1)
+err_knn10 = c()
+for (pred_comb in names(predictor_combinations)){
+  results = do_classify("knn", Boston01, predictor_combinations[[pred_comb]], response, train, test, k=10)
+  err_knn10 = c(err_knn10, c(results$error_rate))
+}
+names(err_knn10) = names(predictor_combinations)
+
+error_rates = data.frame(logistic=err_logis, lda=err_lda, qda=err_qda, 
+                         knn1=err_knn1, knn2=err_knn2, knn4=err_knn4, knn6=err_knn6, knn10=err_knn10)
+
+colMeans(error_rates)
 
 
