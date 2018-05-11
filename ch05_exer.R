@@ -283,3 +283,68 @@ summary(fourth_fit)
 # the 2nd order polynomial is the best model.
 
 
+# 9a
+library(MASS)
+mu_hat = mean(Boston$medv)  # 22.5328
+
+# 9b
+standard_error = sd(Boston$medv) / sqrt(nrow(Boston))  # 0.4088611
+# On average the estimate mu_hat (22.5) is off the population mean by about 0.41.
+
+
+# 9c
+boot.fn = function(data, index)
+{
+  mean(data[index,]$medv)
+}
+set.seed(1)
+library(boot)
+boot_results = boot(Boston, boot.fn, 1000)   
+mu_hat = boot_results$t0    # 22.5328 same as in 9a
+standard_error = sd(boot_results$t) # 0.4120131
+# very close to result in 9b
+
+# 9d
+confidence_interv = sprintf("[ %0.5f, %0.5f ]", mu_hat-2*standard_error, mu_hat+2*standard_error)
+confidence_interv  # "[ 21.70893, 23.35668 ]
+
+t.test(Boston$medv)
+# 95 percent confidence interval: 21.72953 23.33608
+# 95% confidence interval given by t.test is slightly narrower than the one given by the bootstrap method.
+
+
+# 9e
+mu_hat_med = median(Boston$medv)  # 21.2
+
+
+# 9f 
+# Since there is no simple formula for estimating the standard error for sample median, we will use the bootstrap method.
+boot.fn = function(data, index)
+{
+  median(data[index,]$medv)
+}
+set.seed(1)
+boot_results = boot(Boston, boot.fn, 1000)   
+mu_hat_med = boot_results$t0    # 21.2 same as in 9e
+standard_error_med = sd(boot_results$t)  # 0.3801002
+# For the same data set, estimating population median gives smaller error than estimating population mean
+
+
+# 9g
+mu_hat_0.1 = quantile(x = Boston$medv, probs = 0.1)
+mu_hat_0.1 # 12.75
+
+
+# 9h
+boot.fn = function(data, index)
+{
+  quantile(data[index,]$medv, probs = 0.1)
+}
+
+set.seed(1)
+boot_results = boot(Boston, boot.fn, 1000)
+standard_error_0.1 = sd(boot_results$t) 
+standard_error_0.1  # 0.505056
+# estimating the tenth percentile gives larger error than estimating the 50-th percentile (the median)
+
+
