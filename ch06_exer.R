@@ -111,52 +111,118 @@ y = 5 + 2*x + 4*x^2 + x^3 + e
 library(leaps)
 data = data.frame(x=x, y=y)
 
-regfit_bestsub = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
+model_sel = list()
+coeffi = list()
+
+regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
                             data=data, nvmax=10)
 
 # this fit using poly(x, 10) gives very different coefficients, but the same prediction?
 # regfit_bestsub = regsubsets(y ~ poly(x, 10), data=data, nvmax=10)
 
 
-bestsub_summary = summary(regfit_bestsub)
-bestsub_summary
-names(bestsub_summary)
+(summary_best = summary(regfit_best))
+names(summary_best)
 
 # plot Cp, BIC and adjusted R2
-par(mfrow=c(2,2))
+par(mfrow=c(3,3))
 
 # Cp
-plot(bestsub_summary$cp, xlab="Number of predictors", ylab="Cp", type="l")
-argmin = which.min(bestsub_summary$cp)
-argmin # 4
-points(argmin, bestsub_summary$cp[argmin], col="red", cex=2, pch=20)
-coefficients(regfit_bestsub, argmin)
+plot(summary_best$cp, xlab="Number of predictors", ylab="Cp", type="l")
+(cp_min = which.min(summary_best$cp))  # 4
+model_sel[["best_cp"]] = cp_min
+points(cp_min, summary_best$cp[cp_min], col="red", cex=2, pch=20)
+coeffi[["best_cp"]] = coefficients(regfit_best, cp_min)
 
 # BIC
-plot(bestsub_summary$bic, xlab="Number of predictors", ylab="BIC", type="l")
-argmin = which.min(bestsub_summary$bic)
-argmin # 3
-points(argmin, bestsub_summary$bic[argmin], col="red", cex=2, pch=20)
-coefficients(regfit_bestsub, argmin)
+plot(summary_best$bic, xlab="Number of predictors", ylab="BIC", type="l")
+(bic_min = which.min(summary_best$bic))  # 3
+model_sel[["best_bic"]] = bic_min
+points(bic_min, summary_best$bic[bic_min], col="red", cex=2, pch=20)
+coeffi[["best_bic"]] = coefficients(regfit_best, bic_min)
 
 # Adjusted R2
-plot(bestsub_summary$adjr2, xlab="Number of predictors", ylab="Adj R2", type="l")
-argmax = which.max(bestsub_summary$adjr2)
-argmax  # 4
-points(argmax, bestsub_summary$adjr2[argmax], col="red", cex=2, pch=20)
-coefficients(regfit_bestsub, argmax)
+plot(summary_best$adjr2, xlab="Number of predictors", ylab="Adj. R2", type="l")
+(adjr2_max = which.max(summary_best$adjr2))  # 4
+model_sel[["best_adjr2"]] = adjr2_max
+points(adjr2_max, summary_best$adjr2[adjr2_max], col="red", cex=2, pch=20)
+coeffi[["best_adjr2"]] = coefficients(regfit_best, adjr2_max)
 
 # Of course we know that the true model is degree-3 polynomial, and BIC gives correct answer.
 # Although Cp chose a model with 4 predictors and adjusted R2 chose the one with 5 predictors,
 # their plots show no significant improvement after three predictors have been included.
 
+
+# 8c
+# foward stepwise selection
+set.seed(1)
+regfit_fw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
+                            data=data, nvmax=10, method="forward")
+
+(summary_fw = summary(regfit_fw))
+
+# Cp
+plot(summary_fw$cp, xlab="Number of predictors", ylab="Cp", type="l")
+(cp_min = which.min(summary_fw$cp))  # 4
+model_sel[["fw_cp"]] = cp_min
+points(cp_min, summary_fw$cp[cp_min], col="red", cex=2, pch=20)
+coeffi[["fw_cp"]] = coefficients(regfit_fw, cp_min)
+
+# BIC
+plot(summary_fw$bic, xlab="Number of predictors", ylab="BIC", type="l")
+(bic_min = which.min(summary_fw$bic))  # 3
+model_sel[["fw_bic"]] = bic_min
+points(bic_min, summary_fw$bic[bic_min], col="red", cex=2, pch=20)
+coeffi[["fw_bic"]] = coefficients(regfit_fw, bic_min)
+
+# Adjusted R2
+plot(summary_fw$adjr2, xlab="Number of predictors", ylab="Adj. R2", type="l")
+(adjr2_max = which.max(summary_fw$adjr2))  # 4
+model_sel[["fw_adjr2"]] = adjr2_max
+points(adjr2_max, summary_fw$adjr2[adjr2_max], col="red", cex=2, pch=20)
+coeffi[["fw_adjr2"]] = coefficients(regfit_fw, adjr2_max)
+
+
+# foward stepwise selection
+set.seed(1)
+regfit_bw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
+                       data=data, nvmax=10, method="backward")
+
+(summary_bw = summary(regfit_bw))
+
+# Cp
+plot(summary_bw$cp, xlab="Number of predictors", ylab="Cp", type="l")
+(cp_min = which.min(summary_bw$cp))  # 4
+model_sel[["bw_cp"]] = cp_min
+points(cp_min, summary_bw$cp[cp_min], col="red", cex=2, pch=20)
+coeffi[["bw_cp"]] = coefficients(regfit_bw, cp_min)
+
+# BIC
+plot(summary_bw$bic, xlab="Number of predictors", ylab="BIC", type="l")
+(bic_min = which.min(summary_bw$bic))  # 3
+model_sel[["bw_bic"]] = bic_min
+points(bic_min, summary_bw$bic[bic_min], col="red", cex=2, pch=20)
+coeffi[["bw_bic"]] = coefficients(regfit_bw, bic_min)
+
+# Adjusted R2
+plot(summary_bw$adjr2, xlab="Number of predictors", ylab="Adj. R2", type="l")
+(adjr2_max = which.max(summary_bw$adjr2))  # 4
+model_sel[["bw_adjr2"]] = adjr2_max
+points(adjr2_max, summary_bw$adjr2[adjr2_max], col="red", cex=2, pch=20)
+coeffi[["bw_adjr2"]] = coefficients(regfit_bw, adjr2_max)
+
+coeffi
+# Best subset and forward step wise selection methods give the same answer.
+# This kind of makes sense becuase the true model happens to include x, x^2, x^3
+# which are in the search order for forward stepwise selection.
+# Backward stepwise selection gives different results.
+
 # look at the best model in scatter plot
+par(mfrow=c(1,1))
 test_data = data.frame(x=seq(min(x), max(x), length.out=10), y=numeric(10))
-test_x_matrix = model.matrix(as.formula(regfit_bestsub$call[[2]]), test_data)
-coefi = coefficients(regfit_bestsub, id=3)
+test_x_matrix = model.matrix(as.formula(regfit_best$call[[2]]), test_data)
+coefi = coefficients(regfit_best, id=model_sel[["best_bic"]])
 pred_bestsub = test_x_matrix[, names(coefi)] %*% coefi
 plot(x,y)
 lines(test_data$x, pred_bestsub, col="red")
-
-
 
