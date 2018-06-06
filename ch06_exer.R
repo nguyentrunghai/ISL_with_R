@@ -9,13 +9,12 @@
 # possible combinations of predictors for the one with lowest RSS. 
 # Therefore, it guarantees to find the global minimum.
 # For forward and backward stepwise selection methods, the search is not exhaustive.
-# At each k, it can only add one or remove one predictor from the optimal set found in previous step.
-# There is no guarantee that they will find the global minimum.
+# At each k, it can only add one or remove one predictor from the optimal set found in the previous step.
+# There is no guarantee that forward and backward stepwise selection methods will find the global minimum.
 
 # 1b 
-# Can't tell for sure, although if k is not too large such that overfitting is not likely to happen, 
-# it is expected that model given by best subset selection may give the lowest test RSS.
-# This is becuase the predictor subset chosen by the best subset selection may be associated better with the response.
+# Can't tell for sure, each k-variable model was selected based on training RSS or R^2 which 
+# do not tell much about test error.
 
 # 1c
 # i   TRUE
@@ -23,7 +22,7 @@
 # iii FALSE, the two methods may follow different search paths
 # iv  FALSE
 # v   FALSE, because it performs exhaustive seach for each k, there is no restriction on
-#            which predictors to include for each k.
+#            which predictors to include for each k, ie., each step is independent.
 
 
 
@@ -79,7 +78,7 @@
 # iii is correct
 
 # 4b
-# ii is correct
+# ii is correct, upward U
 
 # 4c
 # Variance always decreases when the model becomes less and less flexible
@@ -115,10 +114,10 @@ model_sel = list()
 coeffi = list()
 
 regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
-                            data=data, nvmax=10)
+                            data=data, nvmax=10, method="exhaustive")
 
 # this fit using poly(x, 10) gives very different coefficients, but the same prediction?
-# regfit_bestsub = regsubsets(y ~ poly(x, 10), data=data, nvmax=10)
+# regfit_bestsub = regsubsets(y ~ poly(x, 10), data=data, nvmax=10, method="exhaustive")
 
 
 (summary_best = summary(regfit_best))
@@ -149,12 +148,11 @@ points(adjr2_max, summary_best$adjr2[adjr2_max], col="red", cex=2, pch=20)
 coeffi[["best_adjr2"]] = coefficients(regfit_best, adjr2_max)
 
 # Of course we know that the true model is degree-3 polynomial, and BIC gives correct answer.
-# Although Cp chose a model with 4 predictors and adjusted R2 chose the one with 5 predictors,
-# their plots show no significant improvement after three predictors have been included.
+# Cp and adjusted R2 chose a model with 4 predictors which include also X^5.
+# But the coeefficient for X^5 is rather small.
 
 
-# 8c
-# foward stepwise selection
+# 8d - forward stepwise selection
 set.seed(1)
 regfit_fw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
                             data=data, nvmax=10, method="forward")
@@ -183,7 +181,7 @@ points(adjr2_max, summary_fw$adjr2[adjr2_max], col="red", cex=2, pch=20)
 coeffi[["fw_adjr2"]] = coefficients(regfit_fw, adjr2_max)
 
 
-# foward stepwise selection
+# 8d - backard stepwise selection
 set.seed(1)
 regfit_bw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
                        data=data, nvmax=10, method="backward")
@@ -212,10 +210,11 @@ points(adjr2_max, summary_bw$adjr2[adjr2_max], col="red", cex=2, pch=20)
 coeffi[["bw_adjr2"]] = coefficients(regfit_bw, adjr2_max)
 
 coeffi
-# Best subset and forward step wise selection methods give the same answer.
-# This kind of makes sense becuase the true model happens to include x, x^2, x^3
+# Best subset and forward step wise selection methods give the same answers and include all x, x^2, x^3.
+# This makes sense becuase the true model happens to include x, x^2, x^3
 # which are in the search order for forward stepwise selection.
-# Backward stepwise selection gives different results.
+# Backward stepwise selection gives differnt models than best subset and forward step-wise.
+# In particular they do not include X^3.
 
 # look at the best model in scatter plot
 par(mfrow=c(1,1))
@@ -225,4 +224,14 @@ coefi = coefficients(regfit_best, id=model_sel[["best_bic"]])
 pred_bestsub = test_x_matrix[, names(coefi)] %*% coefi
 plot(x,y)
 lines(test_data$x, pred_bestsub, col="red")
+
+
+# 8e
+x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
+                          I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
+library(glmnet)
+grid = 10^seq(10, -2, length=100)
+lasso.mod = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
+dim(coef(lasso.mod))
+
 
