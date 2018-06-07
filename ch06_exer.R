@@ -113,8 +113,8 @@ data = data.frame(x=x, y=y)
 model_sel = list()
 coeffi = list()
 
-regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
-                            data=data, nvmax=10, method="exhaustive")
+regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
+                           I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="exhaustive")
 
 # this fit using poly(x, 10) gives very different coefficients, but the same prediction?
 # regfit_bestsub = regsubsets(y ~ poly(x, 10), data=data, nvmax=10, method="exhaustive")
@@ -154,8 +154,8 @@ coeffi[["best_adjr2"]] = coefficients(regfit_best, adjr2_max)
 
 # 8d - forward stepwise selection
 set.seed(1)
-regfit_fw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
-                            data=data, nvmax=10, method="forward")
+regfit_fw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + 
+                         I(x^9) + I(x^10), data=data, nvmax=10, method="forward")
 
 (summary_fw = summary(regfit_fw))
 
@@ -183,8 +183,8 @@ coeffi[["fw_adjr2"]] = coefficients(regfit_fw, adjr2_max)
 
 # 8d - backard stepwise selection
 set.seed(1)
-regfit_bw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + I(x^9) + I(x^10),
-                       data=data, nvmax=10, method="backward")
+regfit_bw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
+                         I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="backward")
 
 (summary_bw = summary(regfit_bw))
 
@@ -231,7 +231,34 @@ x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) +
                           I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
 library(glmnet)
 grid = 10^seq(10, -2, length=100)
-lasso.mod = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
-dim(coef(lasso.mod))
+fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
+dim(coef(fit_lasso))
+
+set.seed(1)
+cv_lasso = cv.glmnet(x_matrix, y, alpha=1, nfolds=10)
+plot(cv_lasso)
+best_lam_lasso = cv_lasso$lambda.min
+best_lam_lasso    # 0.03424472
+coef_lasso = predict(fit_lasso, type="coefficients", s=best_lam_lasso)
+coef_lasso = coef_lasso[,1]
+coef_lasso[coef_lasso != 0]
+# CV select 6-variable model, x, x^2, x^3 are included.
+
+# plot lasso line in scatter plot
+test_data = data.frame(x=seq(min(x), max(x), length.out=10), y=numeric(10))
+test_x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
+                               I(x^7) + I(x^8) + I(x^9) + I(x^10), test_data)[,-1]
+pred_lasso = predict(fit_lasso, s=best_lam_lasso, newx=test_x_matrix)
+par(mfrow=c(1,1))
+plot(x,y)
+lines(test_data$x, pred_lasso, col="red")
 
 
+# 8f
+y = 5 + 2*x^7 + e
+set.seed(1)
+train = sample(c(TRUE, FALSE), size=length(x), replace=TRUE)
+test = !train
+
+regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
+                           I(x^8) + I(x^9) + I(x^10), data=data[train,], nvmax=10, method="exhaustive")
