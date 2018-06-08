@@ -254,11 +254,55 @@ plot(x,y)
 lines(test_data$x, pred_lasso, col="red")
 
 
-# 8f
+# 8f 
+# best subset 
 y = 5 + 2*x^7 + e
-set.seed(1)
-train = sample(c(TRUE, FALSE), size=length(x), replace=TRUE)
-test = !train
+data = data.frame(x=x, y=y)
 
 regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
-                           I(x^8) + I(x^9) + I(x^10), data=data[train,], nvmax=10, method="exhaustive")
+                           I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="exhaustive")
+
+(summary_best = summary(regfit_best))
+
+par(mfrow=c(2,3))
+
+# Cp
+plot(summary_best$cp, xlab="Number of predictors", ylab="Cp", type="l")
+(cp_min = which.min(summary_best$cp))  # 2
+points(cp_min, summary_best$cp[cp_min], col="red", cex=2, pch=20)
+coefficients(regfit_best, cp_min)  # X^2 and X^7
+
+# BIC
+plot(summary_best$bic, xlab="Number of predictors", ylab="BIC", type="l")
+(bic_min = which.min(summary_best$bic))  # 1
+points(bic_min, summary_best$bic[bic_min], col="red", cex=2, pch=20)
+coefficients(regfit_best, bic_min) # X^7
+
+# Adjusted R2
+plot(summary_best$adjr2, xlab="Number of predictors", ylab="Adj. R2", type="l")
+(adjr2_max = which.max(summary_best$adjr2))  # 4
+points(adjr2_max, summary_best$adjr2[adjr2_max], col="red", cex=2, pch=20)
+coefficients(regfit_best, adjr2_max)   # X, X^2, X^3, X^7
+
+
+# lasso
+x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
+                          I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
+grid = 10^seq(10, -2, length=100)
+fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
+
+set.seed(1)
+cv_lasso = cv.glmnet(x_matrix, y, alpha=1, nfolds=10)
+plot(cv_lasso)
+best_lam_lasso = cv_lasso$lambda.min
+best_lam_lasso    # 3.879577
+coef_lasso = predict(fit_lasso, type="coefficients", s=best_lam_lasso)
+coef_lasso = coef_lasso[,1]
+coef_lasso[coef_lasso != 0]   # X^7
+
+# Best subset selection with lowest BIC gives the model as 4.95894 + 2.00077*X^7
+# Lasso with 10-fold CV give the best model as 5.229085 + 1.936760 * X^7
+# The two models are similar and very close the the true model. 
+# The beta_7 coefficients of the lasso is smaller than that of best subset, which may be due to
+# the coefficient shrinkage of the lasso
+
