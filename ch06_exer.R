@@ -231,7 +231,7 @@ x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) +
                           I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
 library(glmnet)
 grid = 10^seq(10, -2, length=100)
-fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
+fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid)
 dim(coef(fit_lasso))
 
 set.seed(1)
@@ -287,7 +287,7 @@ coefficients(regfit_best, adjr2_max)   # X, X^2, X^3, X^7
 
 # lasso
 x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
-                          I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
+                          I(x^7) + I(x^8) + I(x^9) + I(x^10))
 grid = 10^seq(10, -2, length=100)
 fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
 
@@ -305,4 +305,42 @@ coef_lasso[coef_lasso != 0]   # X^7
 # The two models are similar and very close the the true model. 
 # The beta_7 coefficients of the lasso is smaller than that of best subset, which may be due to
 # the coefficient shrinkage of the lasso
+
+
+# 9
+names(College)  # in ISLR
+
+# 9a
+set.seed(1)
+train = sample(1:nrow(College), size=nrow(College)/2)
+test = -train
+
+# 9b
+fit_ls = lm(Apps ~ ., data=College[train,])
+summary(fit_ls)
+pred_ls = predict(fit_ls, newdata=College[test,])
+(test_mse_ls = mean((pred_ls - College$Apps[test])^2))   # 1108531
+
+# 9c
+train_x_matrix = model.matrix(Apps ~ ., data=College[train,])
+grid = 10^seq(10, -2, length=100)
+fit_ridge = glmnet(train_x_matrix, College$Apps[train], alpha=0, lambda=grid) 
+
+set.seed(1)
+cv_ridge = cv.glmnet(train_x_matrix, College$Apps[train], alpha=0, nfolds=10)
+plot(cv_ridge)
+(best_lam_ridge = cv_ridge$lambda.min) # 450.7435
+(coef_ridge = predict(fit_ridge, type="coefficients", s=best_lam_ridge))
+
+test_x_matrix = model.matrix(Apps ~ ., data=College[test,])
+# test if it reproduce least squares (lambda = 0)
+pred_ridge = predict(fit_ridge, s=0, newx=test_x_matrix)
+mean((pred_ridge - College$Apps[test])^2)  # 1108447
+# with very big lambda so that the model predict mean y for every test x
+pred_ridge = predict(fit_ridge, s=1e10, newx=test_x_matrix)
+sqrt(mean((pred_ridge - mean(College$Apps[test]))^2))
+
+pred_ridge = predict(fit_ridge, s=best_lam_ridge, newx=test_x_matrix)
+(test_mse_ridge = mean((pred_ridge - College$Apps[test])^2))  # 1036914
+# much bigger error than least square
 
