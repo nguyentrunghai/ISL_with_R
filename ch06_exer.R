@@ -308,11 +308,13 @@ coef_lasso[coef_lasso != 0]   # X^7
 
 
 # 9
+library(ISLR)
+library(glmnet)
 names(College)  # in ISLR
 
 # 9a
 set.seed(1)
-train = sample(1:nrow(College), size=nrow(College)/2)
+train = sample(1:nrow(College), size=nrow(College)/2, replace=FALSE)
 test = -train
 
 # 9b
@@ -322,7 +324,7 @@ pred_ls = predict(fit_ls, newdata=College[test,])
 (test_mse_ls = mean((pred_ls - College$Apps[test])^2))   # 1108531
 
 # 9c
-train_x_matrix = model.matrix(Apps ~ ., data=College[train,])
+train_x_matrix = model.matrix(Apps ~ ., data=College[train,])[,-1]
 grid = 10^seq(10, -2, length=100)
 fit_ridge = glmnet(train_x_matrix, College$Apps[train], alpha=0, lambda=grid) 
 
@@ -332,15 +334,64 @@ plot(cv_ridge)
 (best_lam_ridge = cv_ridge$lambda.min) # 450.7435
 (coef_ridge = predict(fit_ridge, type="coefficients", s=best_lam_ridge))
 
-test_x_matrix = model.matrix(Apps ~ ., data=College[test,])
+test_x_matrix = model.matrix(Apps ~ ., data=College[test,])[,-1]
+# consistency check
 # test if it reproduce least squares (lambda = 0)
 pred_ridge = predict(fit_ridge, s=0, newx=test_x_matrix)
 mean((pred_ridge - College$Apps[test])^2)  # 1108447
 # with very big lambda so that the model predict mean y for every test x
-pred_ridge = predict(fit_ridge, s=1e10, newx=test_x_matrix)
-sqrt(mean((pred_ridge - mean(College$Apps[test]))^2))
+pred_ridge = predict(fit_ridge, s=1e20, newx=test_x_matrix)
+mean((pred_ridge - College$Apps[test])^2)    # 11263629
+# ls model with only the intercept
+mean( ( mean(College$Apps[train]) - College$Apps[test])^2 ) # 11263668
 
 pred_ridge = predict(fit_ridge, s=best_lam_ridge, newx=test_x_matrix)
 (test_mse_ridge = mean((pred_ridge - College$Apps[test])^2))  # 1036914
-# much bigger error than least square
+# very close to the test error given by least squares.
+# The results seem to change a lot with the seed. Much more so for the ridge regression.
+# This may be due to variance in 10-fold cv estimate of test error, which is used to select the best model.
+
+# 9d
+fit_lasso = glmnet(train_x_matrix, College$Apps[train], alpha=1, lambda=grid) 
+set.seed(1)
+cv_lasso = cv.glmnet(train_x_matrix, College$Apps[train], alpha=1, nfolds=10)
+plot(cv_lasso)
+(best_lam_lasso = cv_lasso$lambda.min) # 24.62086
+coef_lasso = predict(fit_lasso, type="coefficients", s=best_lam_lasso)[,1]
+length(coef_lasso) # 18
+length(coef_lasso[coef_lasso!=0]) # 16
+# Only two predictors is shrunk to zero.
+
+pred_lasso = predict(fit_lasso, s=best_lam_lasso, newx=test_x_matrix)
+(test_mse_lasso = mean((pred_lasso - College$Apps[test])^2))  # 1032128
+# almost the same as ridge regression
+
+# 9e
+library(pls)
+set.seed(1)
+fit_pcr = pcr(Apps ~ ., data=College[train, ], scale=TRUE, validation="CV")
+summary(fit_pcr)
+validationplot(fit_pcr, val.type="MSEP", type="b")
+# lowest MSE is when ncomp = 16, almost no dimensional reduction.
+pred_pcr = predict(fit_pcr, newdata=College[test, ], ncomp=16)
+(test_mse_pcr = mean((pred_pcr - College$Apps[test])^2))  # 1166897
+# very close to ridge and lasso regression
+
+# 9f
+set.seed(1)
+fit_pls = plsr(Apps ~ ., data=College[train, ], scale=TRUE, validation="CV")
+summary(fit_pls)
+validationplot(fit_pls, val.type="MSEP", type="b")
+# lowest MSE is when ncomp = 10
+pred_pls = predict(fit_pls, newdata=College[test, ], ncomp=10)
+(test_mse_pls = mean((pred_pls - College$Apps[test])^2))  # 1134531
+# almost the same as pcr
+
+# 9g
+test_mse_ls      # 1108531
+test_mse_ridge   # 1036914
+test_mse_lasso   # 1032128
+test_mse_pcr     # 1166897
+test_mse_pls     # 1134531
+
 
