@@ -395,3 +395,68 @@ test_mse_pcr     # 1166897
 test_mse_pls     # 1134531
 
 
+
+# 10a
+set.seed(1)
+p = 20
+n = 1000
+data = list()
+for(i in 1:p)
+{
+  colname = paste("x", i, sep="")
+  data[[colname]] = rnorm(n)
+}
+data = data.frame(data)
+
+betas = floor(rnorm(p)*10)
+zero_at = sample(p, 5, replace=FALSE)
+zero_at
+betas[zero_at] = 0
+betas
+e = rnorm(n)
+data$y = as.matrix(data) %*% betas + e
+
+
+# 10b
+train = sample(n, size=100, replace=FALSE)
+test = -train
+
+# 10c
+library(leaps)
+fit_best = regsubsets(y ~ ., data=data[train,], nvmax=p)
+# we need the predict function from the lab
+predict.regsubsets = function(model, newdata, id, ...)
+{
+  form = as.formula(model$call[[2]])
+  mat = model.matrix(form, newdata)
+  coefi = coef(model, id=id)
+  xvars = names(coefi)
+  mat[, xvars] %*% coefi
+}
+
+train_errors_best = c()
+for(i in 1:p)
+{
+  pred = predict.regsubsets(fit_best, data[train,], i)
+  error = mean((pred - data[train, "y"])^2 )
+  train_errors_best = c(train_errors_best, error)
+}
+
+plot(train_errors_best, type="b", xlab="number of variables", ylab="training MSE")
+min_error = which.min(train_errors_best)
+points(min_error, train_errors_best[min_error], col="red")
+
+# 10d
+test_errors_best = c()
+for(i in 1:p)
+{
+  pred = predict.regsubsets(fit_best, data[test,], i)
+  error = mean((pred - data[test, "y"])^2 )
+  test_errors_best = c(test_errors_best, error)
+}
+
+plot(test_errors_best, type="b", xlab="number of variables", ylab="test MSE")
+min_error = which.min(test_errors_best)
+points(min_error, test_errors_best[min_error], col="red")
+
+
