@@ -412,6 +412,7 @@ betas = floor(rnorm(p)*10)
 zero_at = sample(p, 5, replace=FALSE)
 zero_at
 betas[zero_at] = 0
+names(betas) = names(data)
 betas
 e = rnorm(n)
 data$y = as.matrix(data) %*% betas + e
@@ -442,9 +443,10 @@ for(i in 1:p)
   train_errors_best = c(train_errors_best, error)
 }
 
+par(mfrow=c(2,2))
 plot(train_errors_best, type="b", xlab="number of variables", ylab="training MSE")
-min_error = which.min(train_errors_best)
-points(min_error, train_errors_best[min_error], col="red")
+min_train_error = which.min(train_errors_best)
+points(min_train_error, train_errors_best[min_train_error], col="red")
 
 # 10d
 test_errors_best = c()
@@ -456,7 +458,35 @@ for(i in 1:p)
 }
 
 plot(test_errors_best, type="b", xlab="number of variables", ylab="test MSE")
-min_error = which.min(test_errors_best)
-points(min_error, test_errors_best[min_error], col="red")
+min_test_error = which.min(test_errors_best)
+points(min_test_error, test_errors_best[min_test_error], col="red")
 
+# 10e and 10f
+min_test_error    # 15
+# The test set MSE is minimum for 15-variable model, which is consistent with how the data was generated.
+# In 10a, there are 20 predictors but only 15 of them are associated the response.
+
+# These predictors are not associated with the response, ie., their coefficients were set to 0.
+zero_at
+# The best 15-variable model does not contain these variables.
+coefficients(fit_best, min_test_error)
+
+# 10g
+l2_norm_beta = c()
+for(i in 1:p)
+{
+  est_betas = rep(0, p)
+  names(est_betas) = names(betas)
+  
+  est_coef = coefficients(fit_best, i)
+  incl_var = names(est_coef)[-1]
+  est_betas[incl_var] = est_coef[incl_var]
+  
+  err = sqrt( sum( (betas - est_betas)^2 ) )
+  l2_norm_beta = c(l2_norm_beta, err)
+}
+plot(l2_norm_beta, type="b", xlab="number of variables", ylab="l2 norm of beta")
+l2_norm_min_at = which.min(l2_norm_beta)
+points(l2_norm_min_at, l2_norm_beta[l2_norm_min_at], col="red")
+# The mininum is for 15-variable model which is consistent with test set MSE and with the way the data was generated.
 
