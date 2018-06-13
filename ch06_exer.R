@@ -395,7 +395,6 @@ test_mse_pcr     # 1166897
 test_mse_pls     # 1134531
 
 
-
 # 10a
 set.seed(1)
 p = 20
@@ -489,4 +488,104 @@ plot(l2_norm_beta, type="b", xlab="number of variables", ylab="l2 norm of beta")
 l2_norm_min_at = which.min(l2_norm_beta)
 points(l2_norm_min_at, l2_norm_beta[l2_norm_min_at], col="red")
 # The mininum is for 15-variable model which is consistent with test set MSE and with the way the data was generated.
+
+
+# 11a
+library(MASS)
+names(Boston)
+Boston$chas = as.factor(Boston$chas)
+
+p = ncol(Boston) -1 
+n = nrow(Boston)
+train = sample(1:n, size=n/2, replace=FALSE)
+test = -train
+Boston_train = Boston[train,]
+Boston_test = Boston[test,]
+
+# best subset
+library(leaps)
+fit_bestsubsets = regsubsets(crim ~ ., data=Boston_train, nvmax=p, method="exhaustive")
+# select best model using 10-fold CV
+k = 10
+set.seed(1)
+folds = sample( 1:k, size=nrow(Boston_train), replace=TRUE)
+cv_error_mat_bestsubsets = matrix( NA, k, p, dimnames=list(NULL, paste(1:p)) )
+for(j in 1:k)
+{
+  fit_j = regsubsets(crim ~ ., data=Boston_train[folds != j, ], nvmax=p, method="exhaustive")
+  for(i in 1:p)
+  {
+    # predict.regsubsets is defined in 10c
+    pred = predict.regsubsets(fit_j, Boston_train[folds == j, ], id=i)
+    cv_error_mat_bestsubsets[j, i] = mean( (pred - Boston_train[folds == j, "crim"])^2 )
+  }
+}
+cv_error_bestsubsets = colMeans(cv_error_mat_bestsubsets)
+par(mfrow=c(2,2))
+plot(cv_error_bestsubsets, type="b", xlab="Number of variables", ylab="CV MSE", main="best subset selection")
+(bestmodel_bestsubsets = which.min(cv_error_bestsubsets))
+points(bestmodel_bestsubsets, cv_error_bestsubsets[bestmodel_bestsubsets], col="red")
+coef_bestsubsets = coefficients(fit_bestsubsets, bestmodel_bestsubsets)
+coef_bestsubsets # only rad and lstat
+# test set error of the best model
+pred = predict.regsubsets(fit_bestsubsets, Boston_test, id=bestmodel_bestsubsets)
+test_error_bestsubsets = mean( (pred - Boston_test[, "crim"])^2 )
+test_error_bestsubsets # 64.43677
+
+
+# ridge
+train_x_matrix = model.matrix(crim ~ ., data=Boston_train)[,-1]
+train_y = Boston_train[, "crim"]
+
+test_x_matrix = model.matrix(crim ~ ., data=Boston_test)[,-1]
+test_y = Boston_test[, "crim"]
+
+library(glmnet)
+grid = 10^seq(10, -2, length=100)
+fit_ridge = glmnet(train_x_matrix, train_y, alpha=0, lambda=grid)
+# select lambda based on 10-fold CV
+set.seed(1)
+cv_error_ridge = cv.glmnet(train_x_matrix, train_y, alpha=0, nfolds=10)
+plot(cv_error_ridge, main="ridge")
+best_lam_ridge = cv_error_ridge$lambda.min
+best_lam_ridge   # 0.5222444
+coef_ridge = predict(fit_ridge, type="coefficients", s=best_lam_ridge)
+coef_ridge 
+# test set error of the best model
+pred = predict(fit_ridge, newx=test_x_matrix, s=best_lam_ridge)
+test_error_ridge = mean( (pred - test_y)^2 )
+test_error_ridge # 64.17414
+
+
+# the lasso
+fit_lasso = glmnet(train_x_matrix, train_y, alpha=1, lambda=grid)
+# select lambda based on 10-fold CV
+set.seed(1)
+cv_error_lasso = cv.glmnet(train_x_matrix, train_y, alpha=1, nfolds=10)
+plot(cv_error_lasso, main="the lasso")
+best_lam_lasso = cv_error_lasso$lambda.min
+best_lam_lasso   # 0.01025187
+coef_lasso = predict(fit_lasso, type="coefficients", s=best_lam_lasso)
+coef_lasso # no coefficients were shrunk to zero 
+# test set error of the best model
+pred = predict(fit_lasso, newx=test_x_matrix, s=best_lam_lasso)
+test_error_lasso = mean( (pred - test_y)^2 )
+test_error_lasso # 63.69493
+
+
+# PCR
+library(pls)
+set.seed(1)
+fit_pcr = pcr(crim ~ ., data=Boston_train, scale=TRUE, validation="CV")
+summary(fit_pcr)
+validationplot(fit_pcr, val.type="MSEP", type="b", main="PCR")
+# lowest MSE is when ncomp = 13, all the components
+pred_pcr = predict(fit_pcr, newdata=Boston_test, ncomp=3)
+test_error_pcr = mean((pred_pcr - Boston_test[, "crim"])^2)
+test_error_pcr # 66.67873
+
+test_error_bestsubsets
+test_error_ridge
+test_error_lasso
+test_error_pcr
 
