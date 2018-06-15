@@ -589,3 +589,14 @@ test_error_ridge
 test_error_lasso
 test_error_pcr
 
+
+# 11b
+# Best subset selection, ridge regression and the lasso gives comparable test set error.
+# PCR gives the worst test error.
+# Best subset selection method selects model with only 2 variables.
+# For both ridge regression and lasso, no coefficient is shrunk to zero.
+# Therefore, I would choose the best subset selection method for the interpretability.
+
+# 11c
+# My chosen model does not involve all the features. The smaller the model, 
+# the less likely it overfits the data
