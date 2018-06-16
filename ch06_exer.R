@@ -113,11 +113,9 @@ data = data.frame(x=x, y=y)
 model_sel = list()
 coeffi = list()
 
-regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
-                           I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="exhaustive")
-
-# this fit using poly(x, 10) gives very different coefficients, but the same prediction?
-# regfit_bestsub = regsubsets(y ~ poly(x, 10), data=data, nvmax=10, method="exhaustive")
+# poly(x, 10) give a matrix of of orthogonal polynomials, which are linear combination of X, X^2, ..., X^10
+# poly(x, 10, raw=TRUE) give X, X^2, ..., X^10 for each column
+regfit_best = regsubsets(y ~ poly(x, 10, raw=TRUE), data=data, nvmax=10, method="exhaustive")
 
 
 (summary_best = summary(regfit_best))
@@ -154,8 +152,7 @@ coeffi[["best_adjr2"]] = coefficients(regfit_best, adjr2_max)
 
 # 8d - forward stepwise selection
 set.seed(1)
-regfit_fw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + I(x^8) + 
-                         I(x^9) + I(x^10), data=data, nvmax=10, method="forward")
+regfit_fw = regsubsets(y ~ poly(x, 10, raw=TRUE), data=data, nvmax=10, method="forward")
 
 (summary_fw = summary(regfit_fw))
 
@@ -183,8 +180,7 @@ coeffi[["fw_adjr2"]] = coefficients(regfit_fw, adjr2_max)
 
 # 8d - backard stepwise selection
 set.seed(1)
-regfit_bw = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
-                         I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="backward")
+regfit_bw = regsubsets(y ~ poly(x, 10, raw = TRUE), data=data, nvmax=10, method="backward")
 
 (summary_bw = summary(regfit_bw))
 
@@ -227,8 +223,7 @@ lines(test_data$x, pred_bestsub, col="red")
 
 
 # 8e
-x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
-                          I(x^7) + I(x^8) + I(x^9) + I(x^10))[,-1]
+x_matrix = model.matrix(y ~ poly(x, 10, raw = TRUE))[,-1]
 library(glmnet)
 grid = 10^seq(10, -2, length=100)
 fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid)
@@ -246,8 +241,7 @@ coef_lasso[coef_lasso != 0]
 
 # plot lasso line in scatter plot
 test_data = data.frame(x=seq(min(x), max(x), length.out=10), y=numeric(10))
-test_x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
-                               I(x^7) + I(x^8) + I(x^9) + I(x^10), test_data)[,-1]
+test_x_matrix = model.matrix(y ~ poly(x, 10, raw = TRUE), test_data)[,-1]
 pred_lasso = predict(fit_lasso, s=best_lam_lasso, newx=test_x_matrix)
 par(mfrow=c(1,1))
 plot(x,y)
@@ -259,8 +253,7 @@ lines(test_data$x, pred_lasso, col="red")
 y = 5 + 2*x^7 + e
 data = data.frame(x=x, y=y)
 
-regfit_best = regsubsets(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + I(x^7) + 
-                           I(x^8) + I(x^9) + I(x^10), data=data, nvmax=10, method="exhaustive")
+regfit_best = regsubsets(y ~ poly(x, 10, raw = TRUE), data=data, nvmax=10, method="exhaustive")
 
 (summary_best = summary(regfit_best))
 
@@ -286,8 +279,7 @@ coefficients(regfit_best, adjr2_max)   # X, X^2, X^3, X^7
 
 
 # lasso
-x_matrix = model.matrix(y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5) + I(x^6) + 
-                          I(x^7) + I(x^8) + I(x^9) + I(x^10))
+x_matrix = model.matrix(y ~ poly(x, 10, raw = TRUE))
 grid = 10^seq(10, -2, length=100)
 fit_lasso = glmnet(x_matrix, y, alpha=1, lambda=grid, standardize=TRUE)
 
