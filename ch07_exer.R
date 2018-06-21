@@ -160,3 +160,120 @@ par(mfrow=c(2, 4))
 plot(gam.fit7, se=TRUE, col="blue")
 # predictors having strong relation with response are horsepower, weight, acceleration and year
 
+
+# 9a
+library(MASS)
+plot(Boston$dis, Boston$nox)
+cubic_polyn_fit = lm(nox ~ poly(dis, 3, raw=TRUE), data=Boston)
+summary(cubic_polyn_fit)
+
+dislims = range(Boston$dis)
+dis_grid = seq(from=dislims[1], to=dislims[2], length.out=100)
+preds = predict(cubic_polyn_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+lines(dis_grid, preds$fit, lw=2, col="blue")
+matlines(dis_grid, se.bands, col="blue", lty="dashed")
+title("Cubic polynomial fit")
+
+# 9b
+par(mfrow = c(3, 4))
+max_degree = 10
+
+for(deg in 1:max_degree)
+{
+  polyn_fit = lm(nox ~ poly(dis, deg, raw=TRUE), data=Boston)
+  rss = sum((polyn_fit$residuals)^2)
+  preds = predict(polyn_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+  se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+  
+  plot(Boston$dis, Boston$nox)
+  lines(dis_grid, preds$fit, lw=2, col="blue")
+  matlines(dis_grid, se.bands, col="blue", lty="dashed")
+  title( paste( c( "Deg.", deg, ", rss =", format(rss)), collapse =" " ) )
+}
+# As expected, the more flexible the model is, the smaller the RSS becomes
+
+# 9c
+library(boot)
+set.seed(1)
+max_degree = 10
+n_folds = 10
+cv.errors = rep(NA, n_folds)
+
+for(deg in 1:max_degree)
+{
+  polyn_fit = glm(nox ~ poly(dis, deg, raw=TRUE), data=Boston)
+  cv.errors[deg] = cv.glm(Boston, polyn_fit, K=n_folds)$delta[1]
+}
+
+min_err_deg = which.min(cv.errors)
+plot(cv.errors, type="b", xlab="polynomial degree", ylab="CV error")
+points(min_err_deg, cv.errors[min_err_deg], col="red")
+
+polyn_fit = glm(nox ~ poly(dis, min_err_deg, raw=TRUE), data=Boston)
+preds = predict(polyn_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+plot(Boston$dis, Boston$nox)
+lines(dis_grid, preds$fit, lw=2, col="blue")
+matlines(dis_grid, se.bands, col="blue", lty="dashed")
+
+
+# 9d
+library(splines)
+# by default, bs() gives cubic splines, 3rd degree
+attr(bs(Boston$dis, df=4), "degree")
+# one knot at the median
+attr(bs(Boston$dis, df=4), "knots")
+
+spline_df4_fit = glm(nox ~ bs(dis, df=4), data=Boston)
+preds = predict(spline_df4_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+plot(Boston$dis, Boston$nox)
+lines(dis_grid, preds$fit, lw=2, col="blue")
+matlines(dis_grid, se.bands, col="blue", lty="dashed")
+
+# 9e
+par(mfrow=c(3,3))
+max_df = 10
+for(df in 3:max_df)
+{
+  spline_fit = glm(nox ~ bs(dis, df=df), data=Boston)
+  rss = sum((spline_fit$residuals)^2)
+  
+  preds = predict(spline_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+  se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+  
+  plot(Boston$dis, Boston$nox)
+  lines(dis_grid, preds$fit, lw=2, col="blue")
+  matlines(dis_grid, se.bands, col="blue", lty="dashed")
+  title( paste( c( "D.F.", df, ", rss =", format(rss)), collapse = " " ) )
+}
+# The more flexible the model is, the smaller the RSS becomes
+
+
+# 9f
+set.seed(1)
+max_df = 10
+n_folds = 10
+cv.errors = rep(NA, max_df)
+
+for(df in 3:max_df)
+{
+  spline_fit = glm(nox ~ bs(dis, df=df), data=Boston)
+  cv.errors[df] = cv.glm(Boston, spline_fit, K=n_folds)$delta[1]
+}
+
+plot(cv.errors, type="b")
+min_err_df = which.min(cv.errors)
+points(min_err_df, cv.errors[min_err_df], col="red")
+
+spline_fit = glm(nox ~ bs(dis, df=min_err_df), data=Boston)
+preds = predict(spline_fit, newdata=data.frame(dis=dis_grid), se=TRUE)
+se.bands = cbind(preds$fit - 2*preds$se.fit, preds$fit + 2*preds$se.fit)
+plot(Boston$dis, Boston$nox)
+lines(dis_grid, preds$fit, lw=2, col="blue")
+matlines(dis_grid, se.bands, col="blue", lty="dashed")
+title( paste( c("Splines with df", min_err_df), collapse = " ") )
+
+
+
