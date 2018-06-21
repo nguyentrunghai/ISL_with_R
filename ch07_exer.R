@@ -50,11 +50,31 @@ lines(age.grid, preds$fit, lwd=2, col="blue")
 matlines(age.grid, se.bands, lwd=1, col="blue", lty="dashed")
 
 
-# 10b
+# 6b
 # this gives error
-step_reg_model = glm(wage ~ cut(age, 2), data=Wage)
+set.seed(1)
 cv_fold = 10
-cv.glm(Wage, step_reg_model, K=cv_fold)$delta[1]
+max_cuts = 10
+cv.errors = rep(NA, max_cuts)
+for(i in 2:max_cuts)
+{
+  Wage$age_c = cut(age, i)
+  step_reg_model = glm(wage ~ age_c, data=Wage)
+  cv.errors[i] = cv.glm(Wage, step_reg_model, K=cv_fold)$delta[1]
+}
 
-# so what I am going to do?
+plot(cv.errors, type="b")
+min_error_cut = which.min(cv.errors)
+points(min_error_cut, cv.errors[min_error_cut], col="red")
+
+# fit using min_error_cut
+Wage$age_c = cut(age, min_error_cut)
+step_reg_model = glm(wage ~ age_c, data=Wage)
+preds = predict(step_reg_model, newdata=data.frame(age_c = cut(age.grid, min_error_cut) ), se=TRUE)
+se.bands = cbind(preds$fit + 2*preds$se.fit, preds$fit - 2*preds$se.fit)
+plot(age, wage)
+title( paste( c("Number of cuts -", min_error_cut), collapse = " "))
+lines(age.grid, preds$fit, lwd=2, col="blue")
+matlines(age.grid, se.bands, lwd=1, col="blue", lty="dashed")
+
 
