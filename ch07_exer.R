@@ -33,7 +33,7 @@ for(deg in 1:max_degree)
 {
   polyno_reg_models[[deg]] = lm(wage ~ poly(age, degree=deg, raw=TRUE), data=Wage)
 }
-do.call(anova, polyno_reg_models)
+do.call(anova, c(as.vector(polyno_reg_models), test="F") )
 
 # there is little evidence that the 5th is better than the 4th based on the p-value of F-statistic
 # so we should choose model with up to the 4th degree polynomial
@@ -108,4 +108,55 @@ gam.fit5 = gam(wage ~ s(age, 5) + year + education + maritl + jobclass,
 par(mfrow=c(2, 3))
 plot(gam.fit5, se=TRUE, col="blue")
 
+# Nevetheless, the contribution magnitude of maritl and jobclass is rather small.
+
+
+# 8
+Auto$origin = factor(Auto$origin)
+Auto$cylinders = factor(Auto$cylinders)
+pairs(Auto)
+# From scatter plots, there are some non-linear relation between predictors such as horsepower, weight, 
+# and the response mpg
+
+max_df = 10
+gam_models = list()
+
+for(df in 1:max_df)
+{
+  gam_models[[df]] = gam(mpg ~ s(displacement, df), data=Auto)
+}
+do.call(anova, c(as.vector(gam_models), test="F"))
+
+# There is little evidence that we should use more than 3 df for displacement
+
+for(df in 1:max_df)
+{
+  gam_models[[df]] = gam(mpg ~ s(horsepower, df), data=Auto)
+}
+do.call(anova, c(as.vector(gam_models), test="F"))
+# There is little evidence that we should use more than 5 df for horsepower
+
+for(df in 1:max_df)
+{
+  gam_models[[df]] = gam(mpg ~ s(weight, df), data=Auto)
+}
+do.call(anova, c(as.vector(gam_models), test="F"))
+# There is little evidence that we should use more than 2 df for weight
+
+gam.fit1 = gam(mpg ~ cylinders, data=Auto)
+gam.fit2 = gam(mpg ~ cylinders + s(displacement, 3), data=Auto)
+gam.fit3 = gam(mpg ~ cylinders + s(displacement, 3) + s(horsepower, 5), data=Auto)
+gam.fit4 = gam(mpg ~ cylinders + s(displacement, 3) + s(horsepower, 5) + s(weight, 5), data=Auto)
+gam.fit5 = gam(mpg ~ cylinders + s(displacement, 3) + s(horsepower, 5) + s(weight, 5) + 
+                 acceleration, data=Auto)
+gam.fit6 = gam(mpg ~ cylinders + s(displacement, 3) + s(horsepower, 5) + s(weight, 5) + 
+                acceleration + year, data=Auto)
+gam.fit7 = gam(mpg ~ cylinders + s(displacement, 3) + s(horsepower, 5) + s(weight, 5) + 
+                 acceleration + year + origin, data=Auto)
+
+anova(gam.fit1, gam.fit2, gam.fit3, gam.fit4, gam.fit5, gam.fit6, gam.fit7, test="F")
+# there is strong evident to use the most complex model gam.fit7
+par(mfrow=c(2, 4))
+plot(gam.fit7, se=TRUE, col="blue")
+# predictors having strong relation with response are horsepower, weight, acceleration and year
 
