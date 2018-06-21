@@ -276,4 +276,60 @@ matlines(dis_grid, se.bands, col="blue", lty="dashed")
 title( paste( c("Splines with df", min_err_df), collapse = " ") )
 
 
+# 10a
+library(ISLR)
+library(leaps)
+names(College)
+dim(College)
+
+set.seed(1)
+test = sample(1:nrow(College), size=nrow(College)/2, replace=FALSE)
+train = - test
+
+fit.fwd = regsubsets(Outstate ~ ., nvmax=ncol(College), data=College[train, ], method="forward")
+fit.summ = summary(fit.fwd)
+names(fit.summ)
+
+# ploting rss, adjr2, cp and BIC
+par(mfrow=c(2,2))
+plot(fit.summ$rss, xlab="# variables", ylab="RSS", type="l")
+
+plot(fit.summ$adjr2, xlab="# variables", ylab="adj. R2", type="l")
+adjr2_max = which.max(fit.summ$adjr2)
+points(adjr2_max, fit.summ$adjr2[adjr2_max], col="red")
+
+plot(fit.summ$cp, xlab="# variables", ylab="CP", type="l")
+cp_min = which.min(fit.summ$cp)
+points(cp_min, fit.summ$cp[cp_min], col="red")
+
+plot(fit.summ$bic, xlab="# variables", ylab="BIC", type="l")
+bic_min = which.min(fit.summ$bic)
+points(bic_min, fit.summ$bic[bic_min], col="red")
+
+# bic give the smallest model with 6 variables.
+# So we will use this model for latter step
+
+selected_features = names(coefficients(fit.fwd, bic_min))[-1]
+selected_features[1] = "Private"
+
+
+# 10b
+library(gam)
+pairs( College[, c("Outstate", selected_features)])
+# only Expend have somewhat clear non-linear relationship with Outstate 
+
+gam.fit = gam( Outstate ~ Private + Room.Board + PhD + perc.alumni + 
+                 poly(Expend, 2, raw=TRUE) + Grad.Rate, data=College[train, ])
+
+par(mfrow=c(2,4))
+plot(gam.fit, se=TRUE, col="blue")
+
+
+# 10c
+preds_train = predict(gam.fit)
+train_error = mean( (preds_train - College[train, "Outstate"])^2 )
+
+preds_test = predict(gam.fit, newdata=College[test, ])
+test_error = mean( (preds_test - College[test, "Outstate"])^2 )
+# test_error is even smaller than train_error, underfitting?
 
