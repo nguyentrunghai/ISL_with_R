@@ -78,3 +78,34 @@ lines(age.grid, preds$fit, lwd=2, col="blue")
 matlines(age.grid, se.bands, lwd=1, col="blue", lty="dashed")
 
 
+# 7 
+# lets include the variables in this order s(age, 5), year, education, maritl, jobclass
+# and do hypothesis testing with ANOVA
+library(gam)
+
+gam.fit1 = gam(wage ~ s(age, 5), data=Wage)
+gam.fit2 = gam(wage ~ s(age, 5) + year, data=Wage)
+gam.fit3 = gam(wage ~ s(age, 5) + year + education, data=Wage)
+gam.fit4 = gam(wage ~ s(age, 5) + year + education + maritl, data=Wage)
+gam.fit5 = gam(wage ~ s(age, 5) + year + education + maritl + jobclass, data=Wage)
+
+anova(gam.fit1, gam.fit2, gam.fit3, gam.fit4, gam.fit5, test="F")
+# it looks like there is a strong evidence of needing to use the most complex model, gam.fit5
+
+par(mfrow=c(2, 3))
+plot(gam.fit5, se=TRUE, col="blue")
+contrasts(jobclass)
+# There are clear relationship between predictors and response, except for maritl.
+# For maritl there is a clear difference in terms of wage between levels "1. Never Married" and "2. Married"
+# The other levels, eg., "3. Widowed", "4. Divorced" and "5. Separated" are noisy 
+# which is due to small number of cases
+mean(maritl == "3. Widowed")*100    # 0.6 %
+mean(maritl == "4. Divorced")*100   # 6.8 %
+mean(maritl == "5. Separated")*100  # 1.8 %
+# less remove this level and replot the figures
+gam.fit5 = gam(wage ~ s(age, 5) + year + education + maritl + jobclass, 
+               data=Wage[maritl != "3. Widowed" & maritl != "4. Divorced" & maritl != "5. Separated", ])
+par(mfrow=c(2, 3))
+plot(gam.fit5, se=TRUE, col="blue")
+
+
