@@ -515,11 +515,11 @@ true_betas = rnorm(p, mean=0, sd = 3)
 true_beta0 = 5
 y = true_beta0 + x %*% true_betas
 
-backfitting = function(x, y, niters=1000)
+backfitting = function(x, y, niters=10)
 {
   n_predictors = ncol(x)
   est_betas = matrix(0, ncol=n_predictors, nrow=niters)
-  est_beta_0 = rep(0, niters)
+  est_beta0 = rep(0, niters)
   
   for(inter in 2:niters)
   {
@@ -528,11 +528,32 @@ backfitting = function(x, y, niters=1000)
       tmp = y - x[, -preditor_ind] %*% est_betas[inter-1, -preditor_ind]
       est_betas[inter, preditor_ind] = lm(tmp ~ x[, preditor_ind])$coef[2]
     }
-    est_beta_0[inter] = lm(tmp ~ x[, preditor_ind])$coef[1]
+    est_beta0[inter] = lm(tmp ~ x[, preditor_ind])$coef[1]
   }
-  return( list(est_beta_0, est_betas) )
+  return( list(est_beta0, est_betas) )
 }
 
-test_backfitting = backfitting(x, y, niters = 10)
+niters = 100
+backfitting_results = backfitting(x, y, niters=niters)
+est_beta0 = backfitting_results[[1]]
+est_betas = backfitting_results[[2]]
 
+multi_fit = lm(y ~ x)
+multi_betas = multi_fit$coefficients[-1]
+multi_beta0 = multi_fit$coefficients[1]
+
+coef_converg_wrt_true = rep(0, niters)
+coef_converg_wrt_multi = rep(0, niters)
+for(iter in 1:niters)
+{
+  coef_converg_wrt_true[iter] = sqrt( (est_betas[iter,] - true_betas) %*% (est_betas[iter,] - true_betas) ) + 
+    sqrt( (est_beta0[iter] - true_beta0)^2 )
+  
+  coef_converg_wrt_multi[iter] = sqrt( (est_betas[iter,] - multi_betas) %*% (est_betas[iter,] - multi_betas) ) +
+    sqrt( (est_beta0[iter] - multi_beta0)^2 )
+}
+
+plot(coef_converg_wrt_true, xlab = "# backfitting steps", ylab="L2 norm of coefficients", col="red", type="l", log="x")
+lines(coef_converg_wrt_multi, col="blue", type="l", log="x")
+# converged after about 10 steps
 
