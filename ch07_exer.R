@@ -554,6 +554,6 @@ for(iter in 1:niters)
 }
 
 plot(coef_converg_wrt_true, xlab = "# backfitting steps", ylab="L2 norm of coefficients", col="red", type="l", log="x")
-lines(coef_converg_wrt_multi, col="blue", type="l", log="x")
+lines(coef_converg_wrt_multi, col="blue", type="l")
 # converged after about 10 steps
 
