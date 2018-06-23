@@ -409,7 +409,7 @@ n = 100
 x1 = rnorm(n)
 x2 = rnorm(n)
 e = rnorm(n)
-y = 5 + 2*x1 + 4*x2 + e
+y = 5 + 10*x1 + 14*x2 + e
 
 # 11b
 b1_hat = 0
@@ -423,7 +423,12 @@ a = y - b2_hat * x2
 b1_hat = lm(a ~ x1)$coef[2]
 
 # 11e
+b1_hat = 0
 niters = 1000
+
+b0_hats = rep(NA, niters)
+b1_hats = rep(NA, niters)
+b2_hats = rep(NA, niters)
 for(i in 1:niters)
 {
   a = y - b1_hat * x1
@@ -431,4 +436,103 @@ for(i in 1:niters)
   
   a = y - b2_hat * x2
   b1_hat = lm(a ~ x1)$coef[2]
+  
+  b0_hats[i] = lm(a ~ x1)$coef[1]
+  b1_hats[i] = b1_hat
+  b2_hats[i] = b2_hat
 }
+
+par(mfrow=c(2,3))
+plot(b0_hats, type="l", main="beta_0", log="x", xlab="# backfitting steps", ylab="beta_0")
+plot(b1_hats, type="l", main="beta_1", log="x", xlab="# backfitting steps", ylab="beta_1")
+plot(b2_hats, type="l", main="beta_2", log="x", xlab="# backfitting steps", ylab="beta_2")
+# very fast convergence. This may be due to the fact that x1 and x2 are uncorrelated.
+# let's try the data where x1 and x2 are correlated.
+
+set.seed(1)
+n = 100
+x1 = rnorm(n)
+x2 = x1 + x1^3 + rnorm(n)
+e = rnorm(n)
+y = 5 + 10*x1 + 14*x2 + e
+
+b1_hat = 0
+niters = 1000
+
+b0_hats = rep(NA, niters)
+b1_hats = rep(NA, niters)
+b2_hats = rep(NA, niters)
+for(i in 1:niters)
+{
+  a = y - b1_hat * x1
+  b2_hat = lm(a ~ x2)$coef[2]
+  
+  a = y - b2_hat * x2
+  b1_hat = lm(a ~ x1)$coef[2]
+  
+  b0_hats[i] = lm(a ~ x1)$coef[1]
+  b1_hats[i] = b1_hat
+  b2_hats[i] = b2_hat
+}
+
+plot(b0_hats, type="l", main="beta_0", log="x", xlab="# backfitting steps", ylab="beta_0")
+plot(b1_hats, type="l", main="beta_1", log="x", xlab="# backfitting steps", ylab="beta_1")
+plot(b2_hats, type="l", main="beta_2", log="x", xlab="# backfitting steps", ylab="beta_2")
+# when x1 and x2 are correlated, the convergence is slower
+
+
+# 11f
+multip_fit = lm(y ~ x1 + x2)
+multip_b0 = multip_fit$coef[1]
+multip_b1 = multip_fit$coef[2]
+multip_b2 = multip_fit$coef[3]
+
+par(mfrow=c(1,3))
+plot(b0_hats, type="l", main="beta_0", log="x", col="red", xlab="# backfitting steps", ylab="beta_0")
+abline(multip_b0, 0, col="blue")
+legend(5, 5.2, legend=c("backfitting", "multiple linear LS"), col=c("red", "blue"), lty=1)
+
+plot(b1_hats, type="l", main="beta_1", log="x", col="red", xlab="# backfitting steps", ylab="beta_1")
+abline(multip_b1, 0, col="blue")
+legend(5, 4, legend=c("backfitting", "multiple linear LS"), col=c("red", "blue"), lty=1)
+
+plot(b2_hats, type="l", main="beta_2", log="x", col="red", xlab="# backfitting steps", ylab="beta_2")
+abline(multip_b2, 0, col="blue")
+legend(5, 15.5, legend=c("backfitting", "multiple linear LS"), col=c("red", "blue"), lty=1)
+
+
+# 11e
+# We need only one step when x1 and x2 are uncorrelated and about 20 when x1 and x2 are correlated.
+
+
+# 12
+set.seed(1)
+n = 1000
+p = 100
+
+x = matrix(rnorm(n*p), ncol=p)
+true_betas = rnorm(p, mean=0, sd = 3)
+true_beta0 = 5
+y = true_beta0 + x %*% true_betas
+
+backfitting = function(x, y, niters=1000)
+{
+  n_predictors = ncol(x)
+  est_betas = matrix(0, ncol=n_predictors, nrow=niters)
+  est_beta_0 = rep(0, niters)
+  
+  for(inter in 2:niters)
+  {
+    for(preditor_ind in 1:n_predictors)
+    {
+      tmp = y - x[, -preditor_ind] %*% est_betas[inter-1, -preditor_ind]
+      est_betas[inter, preditor_ind] = lm(tmp ~ x[, preditor_ind])$coef[2]
+    }
+    est_beta_0[inter] = lm(tmp ~ x[, preditor_ind])$coef[1]
+  }
+  return( list(est_beta_0, est_betas) )
+}
+
+test_backfitting = backfitting(x, y, niters = 10)
+
+
