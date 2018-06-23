@@ -321,7 +321,7 @@ pairs( College[, c("Outstate", selected_features)])
 gam.fit = gam( Outstate ~ Private + Room.Board + PhD + perc.alumni + 
                  poly(Expend, 2, raw=TRUE) + Grad.Rate, data=College[train, ])
 
-par(mfrow=c(2,4))
+par(mfrow=c(2,3))
 plot(gam.fit, se=TRUE, col="blue")
 
 
@@ -333,3 +333,102 @@ preds_test = predict(gam.fit, newdata=College[test, ])
 test_error = mean( (preds_test - College[test, "Outstate"])^2 )
 # test_error is even smaller than train_error, underfitting?
 
+
+# 10d
+max_degree = 5
+
+# Room.Board
+plot(College$Room.Board, College$Outstate)
+gam_models = list()
+for(deg in 1:max_degree)
+{
+  gam_models[[deg]] = gam(Outstate ~ poly(Room.Board, deg, raw=TRUE), data=College[train, ])
+}
+do.call(anova, c(as.vector(gam_models), test="F") )
+# There is no evidence that more conplex function than the linear one is needed.
+
+# PhD
+plot(College$PhD, College$Outstate)
+gam_models = list()
+for(deg in 1:max_degree)
+{
+  gam_models[[deg]] = gam(Outstate ~ poly(PhD, deg, raw=TRUE), data=College[train, ])
+}
+do.call(anova, c(as.vector(gam_models), test="F") )
+# There is strong evidence that degree 2 polynomial fits better linear
+
+# perc.alumni
+plot(College$perc.alumni, College$Outstate)
+gam_models = list()
+for(deg in 1:max_degree)
+{
+  gam_models[[deg]] = gam(Outstate ~ poly(perc.alumni, deg, raw=TRUE), data=College[train, ])
+}
+do.call(anova, c(as.vector(gam_models), test="F") )
+# There is no evidence that more complex model than the linear one is needed.
+
+# Expend
+plot(College$Expend, College$Outstate)
+gam_models = list()
+for(deg in 1:max_degree)
+{
+  gam_models[[deg]] = gam(Outstate ~ poly(Expend, deg, raw=TRUE), data=College[train, ])
+}
+do.call(anova, c(as.vector(gam_models), test="F") )
+# There is strong evidence that degree 3 polynomial fits better degree 2
+
+# Grad.Rate
+plot(College$Grad.Rate, College$Outstate)
+gam_models = list()
+for(deg in 1:max_degree)
+{
+  gam_models[[deg]] = gam(Outstate ~ poly(Grad.Rate, deg, raw=TRUE), data=College[train, ])
+}
+do.call(anova, c(as.vector(gam_models), test="F") )
+# There is no evidence that more complex model than the linear one is needed.
+
+# let's try to fit a GAM model with the polynomial degrees selected above
+gam.fit = gam( Outstate ~ Private + Room.Board + poly(PhD, 2, raw=TRUE) + perc.alumni + 
+                 poly(Expend, 3, raw=TRUE) + Grad.Rate, data=College[train, ])
+
+par(mfrow=c(2,3))
+plot(gam.fit, se=TRUE, col="blue")
+
+preds_train = predict(gam.fit)
+train_error = mean( (preds_train - College[train, "Outstate"])^2 )
+
+preds_test = predict(gam.fit, newdata=College[test, ])
+test_error = mean( (preds_test - College[test, "Outstate"])^2 )
+# Compare to 10c, the train_error is a little smaller (which is consistent with the model being a little more flexible) 
+# and the test_error is also a little smaller but still larger than the train_error
+
+
+# 11a
+set.seed(1)
+n = 100
+x1 = rnorm(n)
+x2 = rnorm(n)
+e = rnorm(n)
+y = 5 + 2*x1 + 4*x2 + e
+
+# 11b
+b1_hat = 0
+
+# 11c
+a = y - b1_hat * x1
+b2_hat = lm(a ~ x2)$coef[2]
+
+# 11d
+a = y - b2_hat * x2
+b1_hat = lm(a ~ x1)$coef[2]
+
+# 11e
+niters = 1000
+for(i in 1:niters)
+{
+  a = y - b1_hat * x1
+  b2_hat = lm(a ~ x2)$coef[2]
+  
+  a = y - b2_hat * x2
+  b1_hat = lm(a ~ x1)$coef[2]
+}
