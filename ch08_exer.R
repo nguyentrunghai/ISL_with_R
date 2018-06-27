@@ -122,3 +122,66 @@ for(mtry in 1:p)
 
 
 
+# 9a
+library(ISLR)
+library(tree)
+names(OJ)
+train = sample(1:nrow(OJ), size=800, replace=FALSE)
+test = -train
+
+# 9b
+tree.oj = tree(Purchase ~ ., data=OJ, subset=train)
+summary(tree.oj)
+# Only 3 out of 17 predictors were used in building the tree.
+# There are 9 terminal nodes
+# Training classification error rate is 0.17
+
+# 9c
+tree.oj
+# If not sure how to interpret the printed text, look at page 325
+# For example this termial node
+# 18) LoyalCH < 0.205758 78   84.27 MM ( 0.23077 0.76923 ) *
+# The test questions for an observation falling into this group can be obtained 
+# by tracing back to the root,
+# LoyalCH < 0.5036; LoyalCH < 0.276142; LoyalCH > 0.0356415; LoyalCH < 0.205758
+# The overall prediction for this group is MM, the deviance is 84.27,
+# The proportion of data points in this gorup having class MM is 0.76923
+
+# 9d
+plot(tree.oj)
+text(tree.oj, pretty=0)
+# The predictor LoyalCH is picked first to split. 
+# all leaves on the right branch haves the same anwser: CH
+# Although the majority on the right branch is already CH after the first split,
+# the subsequent splits on the right are to increase node purity.
+# See page 314 for explanation of the phenomenon.
+# Four out of five leaves on the left branch give anwser MM
+
+# 9e
+tree.oj.pred = predict(tree.oj, newdata=OJ[test, ], type="class")
+table(tree.oj.pred, OJ[test, "Purchase"])
+# Test error rate 
+(15 + 37) / length(tree.oj.pred) # 0.19
+
+# 9f
+set.seed(1)
+cv.tree.oj = cv.tree(tree.oj, FUN=prune.misclass)
+
+# 9g
+plot(cv.tree.oj$size, cv.tree.oj$dev, type="b", xlab="size", ylab="CV error")
+# why cv.tree.oj$dev is large??
+
+# 9h
+# size 4 and 9 are tied
+
+# 9i
+pruned.tree.oj = prune.misclass(tree.oj, best=4)
+
+# 9j
+pruned.tree.oj.pred = predict(pruned.tree.oj, newdata=OJ[test, ], type="class")
+table(pruned.tree.oj.pred, OJ[test, "Purchase"])
+
+# 9k
+# Test error rate 
+(15 + 37) / length(tree.oj.pred) # 0.19 same as unpruned tree
+
