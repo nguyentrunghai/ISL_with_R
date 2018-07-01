@@ -363,3 +363,69 @@ table(yhat_logistic, y_test)
 #             1  350   58
 # fraction of the people predicted to make a purchase do in fact make one
 58 / (350 + 58)  # 0.1421569
+
+
+
+# 12
+library(randomForest)
+library(gbm)
+library(ISLR)
+names(College)
+
+train = sample(1:nrow(College), size=nrow(College)/2, replace=FALSE )
+test = -train
+n_predictors = ncol(College) - 1
+
+# bagging
+bag_mod = randomForest(Grad.Rate ~ ., data=College[train, ], mtry=n_predictors)
+yhat_bag = predict(bag_mod, newdata=College[test, ])
+mse_bag = mean((yhat_bag - College$Grad.Rate[test])^2)
+mse_bag # 174.862
+
+
+# random forest
+mse_rf = c()
+for(nvar in 1:n_predictors)
+{
+  set.seed(1)
+  rf_mod = randomForest(Grad.Rate ~ ., data=College[train, ], mtry=nvar)
+  yhat_rf = predict(rf_mod, newdata=College[test, ])
+  mse_rf = c(mse_rf, mean((yhat_rf - College$Grad.Rate[test])^2) )
+}
+lowest_mse_rf = min(mse_rf)
+lowest_mse_rf # 170.3818
+
+# boosting
+lambda_grid = 10^seq(-6, 0, length=20)
+mse_boost = c()
+set.seed(1)
+for(lambda in lambda_grid)
+{
+  boost_mod = gbm(Grad.Rate ~ ., data=College[train,], distribution="gaussian",
+                  n.trees=1000, interaction.depth=4, shrinkage=lambda)
+  yhat_boost = predict(boost_mod, newdata=College[test,], n.trees=1000)
+  mse_boost  = c(mse_boost , mean( (yhat_boost - College$Grad.Rat[test])^2 )  )
+}
+plot(lambda_grid, mse_boost, type="b", log="x")
+lowest_mse_boost = min(mse_boost )
+lowest_mse_boost # 172.3281
+
+
+# ridge regresion
+library(glmnet)
+grid = 10^seq(10, -2, length=100)
+
+x = model.matrix(Grad.Rate ~ ., data=College)
+y = College$Grad.Rat
+ridge_mod = glmnet(x[train,], y[train], alpha=0, lambda=grid)   # alpha=0 ridge, alpha=1 lasso
+
+mse_ridge = c()
+for(lambda in grid)
+{
+  yhat_ridge = predict(ridge_mod, s=lambda, newx=x[test,])
+  mse_ridge = c(mse_ridge , mean( (yhat_ridge - College$Grad.Rat[test] )^2 ) )
+}
+plot(grid, mse_ridge, type="b", log="x")
+lowest_mse_ridge = min(mse_ridge )
+lowest_mse_ridge   # 169.747
+
