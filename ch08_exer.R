@@ -213,6 +213,7 @@ for(lambda in lambda_grid)
 
 plot(lambda_grid, train_mse, type="b", log="x")
 
+
 # 10d
 test_mse = c()
 set.seed(1)
@@ -226,3 +227,6 @@ for(lambda in lambda_grid)
 }
 
 plot(lambda_grid, test_mse, type="b", log="x")
+boost_best_lambda = lambda_grid[which.min(test_mse)]
+boost_lowest_test_mse = min(test_mse)
+
