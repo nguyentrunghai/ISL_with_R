@@ -104,6 +104,7 @@ rf.carseats = randomForest(Sales ~ ., data=Carseats, subset=train, mtry=sqrt(p),
 rf.carseats
 yhat.rf = predict(rf.carseats, newdata=Carseats[test,])
 mse.rf = mean( (yhat.rf - Carseats[test, "Sales"])^2 )
+
 # 3.162278 higher than bagging 
 sort(importance(rf.carseats )[, 1], decreasing=TRUE)
 # again ShelveLoc is the most important feature and Price is the second most.
@@ -185,3 +186,43 @@ table(pruned.tree.oj.pred, OJ[test, "Purchase"])
 # Test error rate 
 (15 + 37) / length(tree.oj.pred) # 0.19 same as unpruned tree
 
+
+
+# 10a
+library(ISLR)
+Hitters_rmna = Hitters[ ! is.na(Hitters$Salary), ]
+Hitters_rmna$Salary.log = log(Hitters_rmna$Salary)
+Hitters_rmna$Salary = NULL
+
+# 10b
+train = 1:200
+test = - train
+
+# 10c
+library(gbm)
+lambda_grid = 10^seq(-6, 0, length=20)
+train_mse = c()
+set.seed(1)
+for(lambda in lambda_grid)
+{
+  boost_mod = gbm(Salary.log ~ ., data=Hitters_rmna[train,], distribution="gaussian",
+                  n.trees=1000, interaction.depth=4, shrinkage=lambda)
+  yhat = predict(boost_mod, newdata=Hitters_rmna[train,], n.trees=1000)
+  train_mse = c(train_mse, mean( (yhat - Hitters_rmna[train, "Salary.log"])^2 )  )
+}
+
+plot(lambda_grid, train_mse, type="b", log="x")
+
+# 10d
+test_mse = c()
+set.seed(1)
+
+for(lambda in lambda_grid)
+{
+  boost_mod = gbm(Salary.log ~ ., data=Hitters_rmna[train,], distribution="gaussian",
+                  n.trees=1000, interaction.depth=4, shrinkage=lambda)
+  yhat = predict(boost_mod, newdata=Hitters_rmna[test,], n.trees=1000)
+  test_mse = c(test_mse, mean( (yhat - Hitters_rmna[test, "Salary.log"])^2 )  )
+}
+
+plot(lambda_grid, test_mse, type="b", log="x")
