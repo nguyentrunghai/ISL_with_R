@@ -303,3 +303,63 @@ boost_mod = gbm(Purchase ~ ., data=Caravan[train,], distribution="bernoulli",
 summary(boost_mod)
 # PPERSAUT and MOPLHOOG seem to be the most important predictors
 
+# 11c
+# ?predict.gbm
+# type="response" will return probability
+prob_boost = predict(boost_mod, newdata=Caravan[test,], n.trees=1000, type="response")
+yhat_boost = ifelse(prob_boost > 0.2, 1, 0)
+y_test = Caravan[test, "Purchase"]
+# confusion table
+table(yhat_boost, y_test)
+#              y_test
+#yhat_boost    0    1
+#          0 4340  257
+#          1  193   32
+# fraction of the people predicted to make a purchase do in fact make one
+32/ (193 + 32)      # 0.1422222
+
+
+# KNN
+library(class)
+predictors = names(Caravan)
+predictors = predictors[predictors != "Purchase"]
+# include only quantitative variables in the predictors
+quan_predictors = c()
+for(varname in predictors)
+{
+  if( class(Caravan[, varname]) != "factor")
+  {
+    quan_predictors = c(quan_predictors, varname)
+  }
+}
+
+x_standardized = scale( Caravan[, quan_predictors] )
+y = Caravan[, "Purchase"]
+
+x_train = x_standardized[train, ]
+y_train = y[train]
+x_test = x_standardized[test, ]
+y_test = y[test]
+
+set.seed(1)
+knn_pred = knn(x_train, x_test, y_train, k=2)
+table(knn_pred, y_test)
+#             y_test
+# knn_pred    0    1
+#        0 4231  256
+#        1  302   33
+# fraction of the people predicted to make a purchase do in fact make one
+33/(302 + 33)  # 0.09850746
+
+
+# logistic regression
+logistic_mod = glm(Purchase ~ ., data=Caravan[train,], family=binomial)
+prob_logistic = predict(logistic_mod, newdata=Caravan[test,], type="response")
+yhat_logistic = ifelse(prob_logistic > 0.2, 1, 0)
+table(yhat_logistic, y_test)
+#                  y_test
+#yhat_logistic    0    1
+#             0 4183  231
+#             1  350   58
+# fraction of the people predicted to make a purchase do in fact make one
+58 / (350 + 58)  # 0.1421569
