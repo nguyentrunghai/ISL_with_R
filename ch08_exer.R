@@ -228,5 +228,78 @@ for(lambda in lambda_grid)
 
 plot(lambda_grid, test_mse, type="b", log="x")
 boost_best_lambda = lambda_grid[which.min(test_mse)]
-boost_lowest_test_mse = min(test_mse)
+boost_lowest_test_mse = min(test_mse)  # 0.2546597
+
+
+# 10e
+# multiple linear regression
+lm_mod = lm(Salary.log ~ ., data=Hitters_rmna[train,])
+yhat_lm = predict(lm_mod, newdata=Hitters_rmna[test,])
+lm_test_mse = mean( (yhat_lm - Hitters_rmna[test, "Salary.log"])^2 )  # 0.491795
+
+# ridge regression
+library(glmnet)
+grid = 10^seq(10, -2, length=100)
+x = model.matrix(Salary.log ~ ., data=Hitters_rmna)
+y = Hitters_rmna$Salary.log
+ridge_mod = glmnet(x[train,], y[train], alpha=0, lambda=grid)   # alpha=0 ridge, alpha=1 lasso
+
+ridge_test_mse = c()
+for(lambda in grid)
+{
+  yhat_ridge = predict(ridge_mod, s=lambda, newx=x[test,])
+  ridge_test_mse = c(ridge_test_mse, mean( (yhat_ridge - Hitters_rmna[test, "Salary.log"] )^2 ) )
+}
+
+plot(grid, ridge_test_mse, type="b", log="x")
+ridge_best_lambda = grid[which.min(ridge_test_mse)]
+rigde_lowest_mse = min(ridge_test_mse)    # 0.4426008
+
+boost_lowest_test_mse  # 0.2546597
+lm_test_mse            # 0.4917959
+rigde_lowest_mse       # 0.4426008
+# boosting gives significantly lower test mse than multiple linear regression and ridge regression
+
+# 10f
+boost_mod = gbm(Salary.log ~ ., data=Hitters_rmna[train,], distribution="gaussian",
+                n.trees=1000, interaction.depth=4, shrinkage=boost_best_lambda)
+summary(boost_mod)
+# CHits, CAtBat and CWalks are the most important features.
+
+# marginal effect of the three variables
+par(mfrow=c(1,3))
+plot(boost_mod, i="CHits")
+plot(boost_mod, i="CAtBat")
+plot(boost_mod, i="CWalks")
+
+# initially, salary increases with increasing of these three variables.
+# But when these three variables continue to increase, the salary becomes more or less flat.
+
+# 10g
+library(randomForest)
+set.seed(1)
+nvars = ncol(Hitters_rmna) - 1
+bag_mod = randomForest(Salary.log ~ ., data=Hitters_rmna[train,], mtry=nvars, importance=TRUE)
+yhat_bag = predict(bag_mod, newdata=Hitters_rmna[test,])
+bag_test_mse = mean( (yhat_bag - Hitters_rmna[test, "Salary.log"])^2 )
+bag_test_mse # 0.2301184
+# baging gives slightly lower mse that boosting does.
+
+
+# 11a
+library(ISLR)
+names(Caravan)
+sum(is.na(Caravan))
+
+train = 1:1000
+test = -train
+
+# gbm will complain if we dont change to 0 1 variable
+Caravan$Purchase = ifelse(Caravan$Purchase == "Yes", 1, 0)
+# 11b
+library(gbm)
+boost_mod = gbm(Purchase ~ ., data=Caravan[train,], distribution="bernoulli",
+                n.trees=1000, interaction.depth=4, shrinkage=0.01)
+summary(boost_mod)
+# PPERSAUT and MOPLHOOG seem to be the most important predictors
 
