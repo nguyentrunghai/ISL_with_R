@@ -131,6 +131,50 @@ legend("bottomright", legend = c("linear", "polyn. deg. 2", "radial"),
 plot(svmfit_deg2, data[test, ])
 
 
-# 5
 
+# 5a
+set.seed(1)
+x1 = runif(500) - 0.5
+x2 = runif(500) - 0.5
+y = 1*(x1^2 - x2^2 > 0)
+data = data.frame(x1=x1, x2=x2, y=as.factor(y))
+
+# 5b
+par(mfrow=c(3,2))
+x = cbind(x1, x2)
+plot(x, col=y+1, main="data")
+
+# 5c
+logistic_mod = glm(y ~ ., data=data, family=binomial)
+summary(logistic_mod)
+
+# 5d
+lin_prob = predict(logistic_mod, newdata=data, type="response")
+lin_yhat = ifelse(lin_prob > 0.5, 1, 0)
+plot(x, col=lin_yhat+1, main="predicted by logistic reg.")
+
+# 5e
+nonlin_logistic_mod = glm(y ~ x1 + x2 + I(x1^2) + I(x2^2) + I(x1*x2), data=data, family=binomial)
+
+# 5f
+nonlin_prob = predict(nonlin_logistic_mod, newdata=data, type="response")
+nonlin_yhat = ifelse(nonlin_prob > 0.5, 1, 0)
+plot(x, col=nonlin_yhat+1, main="predicted by logistic reg. with nonlin. transf.")
+
+# 5g
+library(e1071)
+cost = c(0.1, 1, 10, 100, 1000)
+gamma = c(0.5, 1, 2, 3, 4)
+lin_svm_mod = tune(svm, y ~ ., data=data, kernel="linear",
+                   scale=FALSE, decision.values=T,
+                   range=list(cost=cost) )$best.model
+lin_svm_yhat = as.numeric( predict(lin_svm_mod, newdata=data) ) -1
+plot(x, col=lin_svm_yhat+1, main="predicted by SVM with linear kernel.")
+
+# 5h
+nonlin_svm_mod = tune(svm, y ~ ., data=data, kernel="radial", 
+                   scale=FALSE, decision.values=T,
+                   range=list(cost=cost, gamma=gamma) )$best.model
+nonlin_svm_yhat = as.numeric( predict(nonlin_svm_mod, newdata=data) ) - 1
+plot(x, col=nonlin_svm_yhat+1, main="predicted by SVM with nonlinear kernel.")
 
