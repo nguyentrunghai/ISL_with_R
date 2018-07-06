@@ -181,12 +181,14 @@ plot(x, col=nonlin_svm_yhat+1, main="predicted by SVM with nonlinear kernel.")
 
 # 6a
 
-set.seed(1)
-x1 = rnorm(100)
-x2 = rnorm(100)
-y = c( rep(-1, 50), rep(1, 50) )
+set.seed(2)
+x1 = rnorm(200)
+x2 = rnorm(200)
+y = c( rep(-1, 100), rep(1, 100) )
+x1[y==1] = x1[y==1] + 2.
+x2[y==1] = x2[y==1] + 2.
+
 x = cbind(x1, x2)
-x[y==1,] = x[y==1,] + 2
 plot(x, col=(3-y))
 
 data = data.frame(x1=x1, x2=x2, y=as.factor(y))
@@ -194,7 +196,45 @@ data = data.frame(x1=x1, x2=x2, y=as.factor(y))
 # 6b
 set.seed(1)
 library(e1071)
-cost = c(0.01, 0.1, 1, 10, 100, 1000)
+costs = c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000)
 tune_lin_svm = tune(svm, y ~ ., data=data, kernel="linear", scale=FALSE, decision.values=TRUE, 
-                    range=list(cost=cost))
+                    range=list(cost=costs))
 
+summary(tune_lin_svm)
+cv_errors = summary(tune_lin_svm)$performances[, 2]
+# cost = 0.01 gives the lowest CV error, but larger costs do not make the error a lot worse
+
+
+train_mistclass = c()
+for(cost in costs)
+{
+  lin_svm_mod = svm(y ~ ., data=data, kernel="linear", cost=cost, scale=F, decision.values=T)
+  pred = predict(lin_svm_mod, newdata=data)
+  confusion_tab = table(pred=pred, truth=data$y)
+  train_mistclass = c(train_mistclass, confusion_tab[-1, 1] + confusion_tab[1, -1])
+}
+
+par(mfrow=c(1,3))
+plot(costs, cv_errors, type="b", col="red", log="x", main="CV error")
+plot(costs, train_mistclass, type="b", col="blue", log="x", main="number of misclassified training data")
+# Larger cost tend to lower value for both CV and training errors
+
+# 6c
+set.seed(10)
+x1_test = rnorm(200)
+x2_test = rnorm(200)
+y_test = c( rep(-1, 100), rep(1, 100) )
+x1_test[y_test==1] = x1_test[y_test==1] + 2.
+x2_test[y_test==1] = x2_test[y_test==1] + 2.
+
+data_test = data.frame(x1=x1_test, x2=x2_test, y=as.factor(y_test))
+
+test_mistclass = c()
+for(cost in costs)
+{
+  lin_svm_mod = svm(y ~ ., data=data, kernel="linear", cost=cost, scale=F, decision.values=T)
+  pred = predict(lin_svm_mod, newdata=data_test)
+  confusion_tab = table(pred=pred, truth=data_test$y)
+  test_mistclass = c(test_mistclass, confusion_tab[-1, 1] + confusion_tab[1, -1])
+}
+plot(costs, test_mistclass, type="b", col="green", log="x", main="number of misclassified test data")
