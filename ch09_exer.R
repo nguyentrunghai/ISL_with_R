@@ -178,3 +178,23 @@ nonlin_svm_mod = tune(svm, y ~ ., data=data, kernel="radial",
 nonlin_svm_yhat = as.numeric( predict(nonlin_svm_mod, newdata=data) ) - 1
 plot(x, col=nonlin_svm_yhat+1, main="predicted by SVM with nonlinear kernel.")
 
+
+# 6a
+
+set.seed(1)
+x1 = rnorm(100)
+x2 = rnorm(100)
+y = c( rep(-1, 50), rep(1, 50) )
+x = cbind(x1, x2)
+x[y==1,] = x[y==1,] + 2
+plot(x, col=(3-y))
+
+data = data.frame(x1=x1, x2=x2, y=as.factor(y))
+
+# 6b
+set.seed(1)
+library(e1071)
+cost = c(0.01, 0.1, 1, 10, 100, 1000)
+tune_lin_svm = tune(svm, y ~ ., data=data, kernel="linear", scale=FALSE, decision.values=TRUE, 
+                    range=list(cost=cost))
+
