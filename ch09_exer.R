@@ -246,4 +246,31 @@ plot(costs, test_mistclass, type="b", col="green", log="x", main="test error rat
 # The test error rate has minimun at cost 0.01 and 0.1.
 
 
+# 7a
+library(ISLR)
+mpg_meadian = median(Auto$mpg)
+mpg_high = 1*(Auto$mpg > mpg_meadian)
+Auto$mpg_high = as.factor(mpg_high)
+Auto$mpg = NULL
+
+Auto$origin = as.factor(Auto$origin)
+
+
+# 7b
+set.seed(1)
+library(e1071)
+costs = c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000)
+
+tune_lin_svm = tune(svm, mpg_high ~ ., data=Auto, kernel="linear", scale=TRUE, 
+                    range=list(cost=costs))
+cv_errors_lin = summary(tune_lin_svm)$performances[, 2]
+par(mfrow=c(1,2))
+plot(costs, cv_errors_lin, type="b", log="x", main="SVM with linear kernel")
+
+# 7c
+gammas = c(0.1, 0.5, 1, 2, 3, 4, 5)
+tune_radial_svm = tune(svm, mpg_high ~ ., data=Auto, kernel="radial", scale=TRUE, 
+                    range=list(cost=costs, gamma=gammas) )
+summary_radial = summary(tune_radial_svm)$performances
+# TODO how to plot heatmap
 
