@@ -211,13 +211,13 @@ for(cost in costs)
   lin_svm_mod = svm(y ~ ., data=data, kernel="linear", cost=cost, scale=F, decision.values=T)
   pred = predict(lin_svm_mod, newdata=data)
   confusion_tab = table(pred=pred, truth=data$y)
-  train_mistclass = c(train_mistclass, confusion_tab[-1, 1] + confusion_tab[1, -1])
+  train_mistclass = c(train_mistclass, (confusion_tab[-1, 1] + confusion_tab[1, -1])/sum(confusion_tab) )
 }
 
 par(mfrow=c(1,3))
 plot(costs, cv_errors, type="b", col="red", log="x", main="CV error")
-plot(costs, train_mistclass, type="b", col="blue", log="x", main="number of misclassified training data")
-# Larger cost tend to lower value for both CV and training errors
+plot(costs, train_mistclass, type="b", col="blue", log="x", main="train error rate")
+
 
 # 6c
 set.seed(10)
@@ -235,6 +235,15 @@ for(cost in costs)
   lin_svm_mod = svm(y ~ ., data=data, kernel="linear", cost=cost, scale=F, decision.values=T)
   pred = predict(lin_svm_mod, newdata=data_test)
   confusion_tab = table(pred=pred, truth=data_test$y)
-  test_mistclass = c(test_mistclass, confusion_tab[-1, 1] + confusion_tab[1, -1])
+  test_mistclass = c(test_mistclass, (confusion_tab[-1, 1] + confusion_tab[1, -1])/sum(confusion_tab) )
 }
-plot(costs, test_mistclass, type="b", col="green", log="x", main="number of misclassified test data")
+plot(costs, test_mistclass, type="b", col="green", log="x", main="test error rate")
+
+# 6d
+# The CV error has minimun at cost=0.01 and again at large costs of 100, 1000, 10000.
+# So the trend of CV error is not very clear.
+# As expected the larger the cost is the lower the training error becomes.
+# The test error rate has minimun at cost 0.01 and 0.1.
+
+
+
