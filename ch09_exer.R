@@ -255,22 +255,157 @@ Auto$mpg = NULL
 
 Auto$origin = as.factor(Auto$origin)
 
+Auto_scaled = Auto
+predictors = names(Auto)
+predictors = predictors[predictors != "mpg_high"]
+for(predictor in predictors)
+{
+  if( class(Auto_scaled[, predictor]) == "numeric" )
+  {
+    Auto_scaled[, predictor] = scale(Auto_scaled[, predictor])
+  }
+}
 
 # 7b
 set.seed(1)
 library(e1071)
 costs = c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000)
 
-tune_lin_svm = tune(svm, mpg_high ~ ., data=Auto, kernel="linear", scale=TRUE, 
+tune_lin_svm = tune(svm, mpg_high ~ ., data=Auto_scaled, kernel="linear", scale=FALSE, 
                     range=list(cost=costs))
-cv_errors_lin = summary(tune_lin_svm)$performances[, 2]
-par(mfrow=c(1,2))
-plot(costs, cv_errors_lin, type="b", log="x", main="SVM with linear kernel")
+cv_errors_lin = summary(tune_lin_svm)$performances
+cv_errors_lin
+plot(costs, cv_errors_lin[,2], type="b", log="x", main="SVM with linear kernel")
+# cost=0.01 and cost=1 give lowest CV error rate: 0.08673077
 
 # 7c
 gammas = c(0.1, 0.5, 1, 2, 3, 4, 5)
-tune_radial_svm = tune(svm, mpg_high ~ ., data=Auto, kernel="radial", scale=TRUE, 
+tune_radial_svm = tune(svm, mpg_high ~ ., data=Auto_scaled, kernel="radial", scale=FALSE, 
                     range=list(cost=costs, gamma=gammas) )
-summary_radial = summary(tune_radial_svm)$performances
-# TODO how to plot heatmap
+cv_errors_radial = summary(tune_radial_svm)$performances
+cv_errors_radial[ which.min(cv_errors_radial$error), ]
+# cost=1, gamma=0.5 gives the lowest CV error rate: 0.07397436 which is smaller than SVM with linear kernel
+
+# 7d
+lin_svm_best = tune_lin_svm$best.model
+plot(lin_svm_best, Auto_scaled, displacement ~ horsepower)
+plot(lin_svm_best, Auto_scaled, horsepower ~ weight)
+plot(lin_svm_best, Auto_scaled, horsepower ~ acceleration)
+plot(lin_svm_best, Auto_scaled, weight ~ acceleration)
+
+radial_svm_best = tune_radial_svm$best.model
+plot(radial_svm_best, Auto_scaled, displacement ~ horsepower)
+plot(radial_svm_best, Auto_scaled, horsepower ~ weight)
+plot(radial_svm_best, Auto_scaled, horsepower ~ acceleration)
+plot(radial_svm_best, Auto_scaled, weight ~ acceleration)
+# not so easy to imterpret these plots which are projection on 2d planes
+
+
+# 8a
+library(ISLR)
+names(OJ)
+mean(OJ$Purchase == "CH")  # 0.61 rather balanced dataset
+
+train = sample(1:nrow(OJ), size=800, replace=FALSE)
+test = -train
+
+# 8b
+library(e1071)
+svm_lin_cost0.01 = svm(Purchase ~ ., data=OJ[train,], kernel="linear", scale=TRUE, cost=0.01)
+summary(svm_lin_cost0.01)
+
+# 8c
+error_rate = function(model, data, subset, response)
+{
+  pred = predict(model, newdata=data[subset,])
+  confus_mat = table(pred=pred, truth=data[subset, response])
+  error = (confus_mat[1, 2] + confus_mat[2, 1]) / sum(confus_mat)
+  return(error)
+}
+
+train_error_lin_cost0.01 = error_rate(svm_lin_cost0.01, OJ, train, "Purchase")
+train_error_lin_cost0.01 # 0.17
+
+test_error_lin_cost0.01 = error_rate(svm_lin_cost0.01, OJ, test, "Purchase")
+test_error_lin_cost0.01  # 0.1740741
+
+
+# 8d
+set.seed(1)
+costs = 10^seq(-2, 1, length=10)
+tune_lin = tune(svm, Purchase ~ ., data=OJ[train,], kernel="linear", scale=TRUE,
+                         range=list(cost=costs))
+cv_error_lin = summary(tune_lin)$performances
+cv_error_lin[ which.min(cv_error_lin$error), ]
+# cost = 0.464 gives lowest CV error: 0.1675
+
+svm_lin_best = tune_lin$best.model
+
+train_error_lin_best = error_rate(svm_lin_best, OJ, train, "Purchase")
+train_error_lin_best # 0.165
+
+test_error_lin_best = error_rate(svm_lin_best, OJ, test, "Purchase")
+test_error_lin_best  # 0.1703704
+
+
+#8e
+svm_radial_cost0.01 = svm(Purchase ~ ., data=OJ[train,], kernel="radial", scale=TRUE, cost=0.01)
+summary(svm_radial_cost0.01)
+
+train_error_radial_cost0.01 = error_rate(svm_radial_cost0.01, OJ, train, "Purchase")
+train_error_radial_cost0.01 # 0.3975
+
+test_error_radial_cost0.01 = error_rate(svm_radial_cost0.01, OJ, test, "Purchase")
+test_error_radial_cost0.01 #  0.3666667
+
+
+set.seed(1)
+tune_radial = tune(svm, Purchase ~ ., data=OJ[train,], kernel="radial", scale=TRUE,
+                range=list(cost=costs))
+cv_error_radial = summary(tune_radial)$performances
+cv_error_radial[ which.min(cv_error_radial$error), ]
+# cost = 4.641589 gives lowest cv error rate: 0.18
+
+svm_radial_best = tune_radial$best.model
+
+train_error_radial_best = error_rate(svm_radial_best, OJ, train, "Purchase")
+train_error_radial_best  # 0.15125
+
+test_error_radial_best = error_rate(svm_radial_best, OJ, test, "Purchase")
+test_error_radial_best  # 0.162963
+
+
+# 8d
+svm_polyn_cost0.01 = svm(Purchase ~ ., data=OJ[train,], kernel="polynomial", degree=2, scale=TRUE, cost=0.01)
+summary(svm_polyn_cost0.01)
+
+train_error_polyn_cost0.01 = error_rate(svm_polyn_cost0.01, OJ, train, "Purchase")
+train_error_polyn_cost0.01 # 0.39625
+
+test_error_polyn_cost0.01 = error_rate(svm_polyn_cost0.01, OJ, test, "Purchase")
+test_error_polyn_cost0.01 # 0.362963
+
+
+set.seed(1)
+tune_polyn = tune(svm, Purchase ~ ., data=OJ[train,], kernel="polynomial", degree=2, scale=TRUE,
+                   range=list(cost=costs))
+cv_error_polyn = summary(tune_polyn)$performances
+cv_error_polyn[ which.min(cv_error_polyn$error), ]
+# cost = 10 gives lowest cv error rate: 0.1775
+
+svm_polyn_best = tune_polyn$best.model
+
+train_error_polyn_best = error_rate(svm_polyn_best, OJ, train, "Purchase")
+train_error_polyn_best  # 0.155
+
+test_error_polyn_best = error_rate(svm_polyn_best, OJ, test, "Purchase")
+test_error_polyn_best  # 0.162963
+
+# 8e
+test_error_lin_best  # 0.1703704
+test_error_radial_best  # 0.162963
+test_error_polyn_best  # 0.162963
+
+
+
 
